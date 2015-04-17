@@ -10,6 +10,14 @@
 		window.HIGH_QUALITY = true;
 		window.PLATFORM = '';
 		window.DEBUG = { SHOW_FPS: false };
+		// post message to kongregate api
+		window.kongregateStats = function(name, val){
+			try { (window.opener || window.parent).postMessage({name: name, val: val}, '*'); } catch(e) {}
+		};
+		window.onmessage = function(e){
+			if(e.origin !== location.origin) return;
+			kongregateStats(e.data.name, e.data.val);
+		};
 	</script>
 	<script type="text/javascript" src="data/js/utils.js"></script>
 	<script type="text/javascript" src="data/js/main.js"></script>
@@ -23,26 +31,6 @@
 	</div>
 	<script type="text/javascript">
 		document.getElementById('hint').innerHTML = 'Loading...';
-	</script>
-	<script type="text/javascript">
-		// stat to lastleaf.me
-		(function() {
-			var env = {};
-			env.u = document.location.href;
-			env.sw = screen.width;
-			env.sh = screen.height;
-			if(document.referrer && document.referrer != "") {
-				env.rf = document.referrer;
-			}
-			var params = [];
-			for(var key in env) {
-				if(env.hasOwnProperty(key)) {
-					params.push(encodeURIComponent(key) + "=" + encodeURIComponent(env[key]));
-				}
-			}
-			var img = new Image();
-			img.src = 'http://lastleaf.me/plugins/xsite_tracking/a.gif?' + params.join('&');
-		})();
 	</script>
 </body>
 </html>

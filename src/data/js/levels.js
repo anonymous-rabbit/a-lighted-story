@@ -291,6 +291,8 @@ var startLevel = function(level){
 				window.removeEventListener('keydown', game.keyDownFunc);
 				window.removeEventListener('keyup', game.keyUpFunc);
 				game.showCover();
+				// send stat to kongregate
+				kongregateStats('ReadThroughWholeStory', 1);
 			}
 		}
 		createjs.Ticker.addEventListener('tick', gameEnd);
@@ -553,6 +555,12 @@ var startLevel = function(level){
 		};
 		var doneLevel = function(){
 			game.settings.curLevel++;
+			// send stat to kongregate
+			kongregateStats('LevelPassed', game.settings.curLevel);
+			if(game.settings.difficulty === 3) {
+				kongregateStats('LevelPassedInSuicideDifficulty', game.settings.curLevel);
+			}
+
 			if(controlConfig.bgFadeout) {
 				var fadeFrame = controlConfig.bgFadeout;
 				var fadeStep = controlConfig.bgFadeoutStep;
