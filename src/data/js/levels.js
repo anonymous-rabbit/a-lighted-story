@@ -100,7 +100,7 @@ var parseMap = function(level){
 					g.r((p%160)*6, Math.floor(p/160)*6, 6, 6);
 			}
 		}
-		picture.filters = [ new createjs.BoxBlurFilter(6*blur+2,6*blur+2,1) ];
+		picture.filters = [ new createjs.BlurFilter(6*blur+2,6*blur+2,4) ];
 		picture.cache(0,0,WIDTH,HEIGHT);
 		picture.block = block;
 		pictures.push(picture);
@@ -222,14 +222,6 @@ var generatePerson = function(color){
 	return new createjs.BitmapAnimation(ss.build());
 };
 
-var whiteMap = (function(){
-	var b = new createjs.Shape();
-	b.graphics.f('rgb(128,128,128)').r(12,12,WIDTH-24,HEIGHT-24);
-	b.filters = [ new createjs.BoxBlurFilter(12,12,1) ];
-	b.cache(0,0,WIDTH,HEIGHT);
-	return b;
-})();
-
 // user operations
 
 var userCtrlReset = function(){
@@ -238,10 +230,10 @@ var userCtrlReset = function(){
 	userCtrl.skip = false;
 	userCtrl.reset = false;
 	userCtrl.action = false;
-	userCtrl.up = false;
-	userCtrl.down = false;
-	userCtrl.left = false;
-	userCtrl.right = false;
+	userCtrl.up = 0;
+	userCtrl.down = 0;
+	userCtrl.left = 0;
+	userCtrl.right = 0;
 };
 var userCtrl = {
 	animating: false,
@@ -347,7 +339,7 @@ var startLevel = function(level){
 		storyText.textBaseline = 'middle';
 		storyText.x = WIDTH/2;
 		storyText.y = HEIGHT/2;
-		storyText.filters = [ new createjs.BoxBlurFilter(1,1,1) ];
+		storyText.filters = [ new createjs.BlurFilter(2,2,1) ];
 		storyText.cache(-480, -20, 960, 40);
 		var storyContainer = new createjs.Container();
 		game.stage.addChild(storyContainer);
@@ -560,7 +552,7 @@ var startLevel = function(level){
 					if(userCtrl.paused) return;
 					map.picture.alpha -= fadeStep;
 					lightsLayer.alpha -= fadeStep;
-					cloudsLayer.alpha -= fadeStep;
+					if(!MOBILE) cloudsLayer.alpha -= fadeStep;
 					fadeFrame--;
 					if(!fadeFrame) levelEnd(function(){
 						startLevel(game.settings.curLevel);
@@ -599,7 +591,7 @@ var startLevel = function(level){
 		pauseLayerFrame.y = HEIGHT/2 - 150;
 		var pauseLayerBackground = (new createjs.Shape(
 			(new createjs.Graphics()).f('rgba(255,255,255,0.7)').r(0,0,500,300)
-		)).set({filters: [ new createjs.BoxBlurFilter(10,10,1) ]});
+		)).set({filters: [ new createjs.BlurFilter(10,10,4) ]});
 		pauseLayerBackground.cache(-10,-10,520,320);
 		pauseLayerFrame.addChild(pauseLayerBackground);
 		pauseLayerFrame.addChild(new createjs.Shape(
@@ -795,7 +787,7 @@ var startLevel = function(level){
 				text.textBaseline = 'middle';
 				text.x = textInfo[1] || 480;
 				text.y = textInfo[2] || 270;
-				text.filters = [ new createjs.BoxBlurFilter(1,1,1) ];
+				//text.filters = [ new createjs.BlurFilter(2,2,0) ];
 				if(text.textAlign === 'left')
 					text.cache(0, -20, 960, 40);
 				else if(text.textAlign === 'center')
@@ -1040,14 +1032,14 @@ var startLevel = function(level){
 		if (controlConfig.fog) {
 			var fog = new createjs.Shape();
 			fog.graphics.f('white').dc(0, 0, FOG_R-8);
-			fog.filters = [ new createjs.BoxBlurFilter(8,8,1) ];
+			fog.filters = [ new createjs.BlurFilter(8,8,1) ];
 			fog.cache(-FOG_R, -FOG_R, 2*FOG_R, 2*FOG_R);
 			fog.compositeOperation = 'destination-in';
 			fog.x = mePicture.x;
 			fog.y = mePicture.y;
 			var fogBackground = new createjs.Shape();
 			fogBackground.graphics.f('rgb(128,128,128)').r(8, 8, WIDTH-16, HEIGHT-16);
-			fogBackground.filters = [ new createjs.BoxBlurFilter(8,8,1) ];
+			fogBackground.filters = [ new createjs.BlurFilter(8,8,1) ];
 			fogBackground.cache(0, 0, WIDTH, HEIGHT);
 			fogBackground.compositeOperation = 'destination-over';
 			game.stage.addChild(fog);
@@ -1136,13 +1128,13 @@ var startLevel = function(level){
 		game.stage.addChild(mapTextLayer);
 
 		// show clouds
-		var cloudsLayer = cloudsStart();
+		if(!MOBILE) var cloudsLayer = cloudsStart();
 
 		// show hp from level 1
 		if(level > 0) {
 			var hpBackground = new createjs.Shape();
 			hpBackground.graphics.f('black').r(0,0,8,100);
-			hpBackground.filters = [ new createjs.BoxBlurFilter(3,3,1) ];
+			hpBackground.filters = [ new createjs.BlurFilter(3,3,1) ];
 			hpBackground.cache(-7,-7,22,114);
 			var hpOutline = new createjs.Shape();
 			hpOutline.graphics.ss(1).s('#fff').f('black').r(0,0,8,100);
@@ -1272,31 +1264,31 @@ game.start = function(){
 		userCtrl.action = true;
 	};
 	var keyStartUp = function(){
-		userCtrl.up = true;
+		userCtrl.up = 1;
 	};
 	var keyStartDown = function(){
-		userCtrl.down = true;
+		userCtrl.down = 1;
 	};
 	var keyStartLeft = function(){
-		userCtrl.left = true;
+		userCtrl.left = 1;
 	};
 	var keyStartRight = function(){
-		userCtrl.right = true;
+		userCtrl.right = 1;
 	};
 	var keyEndAction = function(){
 		userCtrl.action = false;
 	};
 	var keyEndUp = function(){
-		userCtrl.up = false;
+		userCtrl.up = 0;
 	};
 	var keyEndDown = function(){
-		userCtrl.down = false;
+		userCtrl.down = 0;
 	};
 	var keyEndLeft = function(){
-		userCtrl.left = false;
+		userCtrl.left = 0;
 	};
 	var keyEndRight = function(){
-		userCtrl.right = false;
+		userCtrl.right = 0;
 	};
 
 	var keyDownFunc = {
@@ -1349,6 +1341,17 @@ game.start = function(){
 	game.blurFunc = function(e){
 		pause();
 	};
+
+	// touch events
+	if(MOBILE) {
+		createjs.Touch.enable(game.stage);
+		game.stage.addEventListener('stagemousedown', function(e){
+			userCtrl.left = 1;
+		});
+		game.stage.addEventListener('stagemouseup', function(e){
+			userCtrl.left = 0;
+		});
+	}
 
 	// enter level
 	game.stage.enableMouseOver(0);

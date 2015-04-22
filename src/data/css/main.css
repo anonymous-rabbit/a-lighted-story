@@ -5,12 +5,19 @@
 	src: url(noto_serif.woff);
 }
 
+@font-face {
+	font-family: "Noto Sans SC";
+	font-style: normal;
+	font-weight: 400;
+	src: url(noto_sans_sc.woff);
+}
+
 body {
 	margin: 0;
 	background: #000;
 	color: #fff;
 	overflow: hidden;
-	font-family: "Noto Serif", "sans-serif";
+	font-family: "Noto Serif", "Noto Sans SC", "sans-serif";
 }
 a, a:visited {
 	color: #00d2ff;

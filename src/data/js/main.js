@@ -413,12 +413,12 @@ game.showCover = function(){
 				{id:'maps', type:'text', src:'maps.data?v='+VERSION},
 				{id:'ctrl', src:'ctrl.json?v='+VERSION},
 				{id:'words', src:'words_'+game.settings.lang+'.json?v='+VERSION},
-				{id:'bgm1', src:'audio/the_start_of_night.ogg|audio/the_start_of_night.mp3'},
-				{id:'bgm2', src:'audio/lighted_stories.ogg|audio/lighted_stories.mp3'},
-				{id:'bgm3', src:'audio/tomorrow.ogg|audio/tomorrow.mp3'},
-				{id:'bgm4', src:'audio/spreading_white.ogg|audio/spreading_white.mp3'},
-				{id:'bgm5', src:'audio/lighted_stories_strings.ogg|audio/lighted_stories_strings.mp3'},
-				{id:'bgm0', src:'audio/tomorrow_short.ogg|audio/tomorrow_short.mp3'},
+				{id:'bgm1', src:'audio/the_start_of_night.ogg'},
+				{id:'bgm2', src:'audio/lighted_stories.ogg'},
+				{id:'bgm3', src:'audio/tomorrow.ogg'},
+				{id:'bgm4', src:'audio/spreading_white.ogg'},
+				{id:'bgm5', src:'audio/lighted_stories_strings.ogg'},
+				{id:'bgm0', src:'audio/tomorrow_short.ogg'},
 				{id:'tomorrow', src:'image/title_'+game.settings.lang+'.png'},
 				{id:'img6', src:'image/6.png'},
 				{id:'img7', src:'image/7.png'},
@@ -454,12 +454,12 @@ game.showCover = function(){
 			xhr3.send();
 			// load else
 			q.loadManifest([
-				{id:'bgm1', src:'audio/the_start_of_night.ogg|audio/the_start_of_night.mp3'},
-				{id:'bgm2', src:'audio/lighted_stories.ogg|audio/lighted_stories.mp3'},
-				{id:'bgm3', src:'audio/tomorrow.ogg|audio/tomorrow.mp3'},
-				{id:'bgm4', src:'audio/spreading_white.ogg|audio/spreading_white.mp3'},
-				{id:'bgm5', src:'audio/lighted_stories_strings.ogg|audio/lighted_stories_strings.mp3'},
-				{id:'bgm0', src:'audio/tomorrow_short.ogg|audio/tomorrow_short.mp3'},
+				{id:'bgm1', src:'audio/the_start_of_night.ogg'},
+				{id:'bgm2', src:'audio/lighted_stories.ogg'},
+				{id:'bgm3', src:'audio/tomorrow.ogg'},
+				{id:'bgm4', src:'audio/spreading_white.ogg'},
+				{id:'bgm5', src:'audio/lighted_stories_strings.ogg'},
+				{id:'bgm0', src:'audio/tomorrow_short.ogg'},
 				{id:'tomorrow', src:'image/title_'+game.settings.lang+'.png'},
 				{id:'img6', src:'image/6.png'},
 				{id:'img7', src:'image/7.png'},
@@ -557,11 +557,15 @@ document.bindReady(function(){
 		game.focused = false;
 	}, false);
 
+	// hacks on new version of createjs
+	createjs.BitmapAnimation = createjs.Sprite;
+
 	// init canvas
 	document.getElementById('wrapper').innerHTML = '<canvas id="main_canvas" width="'+WIDTH+'" height="'+HEIGHT+'"></canvas>';
 	startResizeWrapper();
 	game.stage = new createjs.Stage('main_canvas');
 	createjs.Sound.registerPlugins([createjs.HTMLAudioPlugin]);
+	createjs.Sound.alternateExtensions = ["mp3"];
 
 	// load title resource
 	hint.show(game.str[2]);
