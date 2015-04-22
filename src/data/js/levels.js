@@ -342,6 +342,12 @@ var startLevel = function(level){
 		storyText.filters = [ new createjs.BlurFilter(2,2,1) ];
 		storyText.cache(-480, -20, 960, 40);
 		var storyContainer = new createjs.Container();
+		var storyContainerBg = new createjs.Shape();
+		storyContainerBg.x = WIDTH/2;
+		storyContainerBg.y = HEIGHT/2;
+		storyContainerBg.graphics.f('#000').r(-480, -30, 960, 60);
+		storyContainerBg.cache(-480, -30, 960, 60);
+		game.stage.addChild(storyContainerBg);
 		game.stage.addChild(storyContainer);
 		var i = 0;
 		var isFadeIn = true;

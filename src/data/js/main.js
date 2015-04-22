@@ -3,7 +3,7 @@
 
 // consts
 
-var FPS = 32;
+var FPS = 30;
 var WIDTH = 960;
 var HEIGHT = 540;
 var USE_ADVANCED_LOADING = false;
@@ -305,6 +305,7 @@ game.showCover = function(){
 			// save settings
 			game.saveSettings();
 			// remove key bindings
+			if(MOBILE) fullScreenOn();
 			window.removeEventListener('keyup', coverKeyFunc);
 			// fade-out everything
 			var b = new createjs.Shape();
@@ -482,19 +483,24 @@ var startResizeWrapper = function(){
 	var mainCanvas = document.getElementById('main_canvas');
 	var resizeWrapper = function(){
 		wrapper.style.height = document.documentElement.clientHeight + 'px';
-		var r = 1;
-		if(document.documentElement.clientHeight < HEIGHT)
-			var r = document.documentElement.clientHeight / HEIGHT;
-		if(document.documentElement.clientWidth < WIDTH) {
-			var t = document.documentElement.clientWidth / WIDTH;
-			if(r > t) r = t;
-		}
+		var r = document.documentElement.clientHeight / HEIGHT;
+		var t = document.documentElement.clientWidth / WIDTH;
+		if(r > t) r = t;
 		if(r >= 1) {
-			mainCanvas.style.width = WIDTH + 'px';
-			mainCanvas.style.height = HEIGHT + 'px';
+			if(MOBILE) {
+				mainCanvas.style.width = Math.floor(WIDTH*r) + 'px';
+				mainCanvas.style.height = Math.floor(HEIGHT*r) + 'px';
+			} else {
+				mainCanvas.style.width = WIDTH + 'px';
+				mainCanvas.style.height = HEIGHT + 'px';
+			}
 		} else {
-			mainCanvas.style.width = Math.round(WIDTH*r) + 'px';
-			mainCanvas.style.height = Math.round(HEIGHT*r) + 'px';
+			mainCanvas.style.width = 'auto';
+			mainCanvas.style.height = 'auto';
+			mainCanvas.width = Math.floor(WIDTH*r);
+			mainCanvas.height = Math.floor(HEIGHT*r);
+			game.stage.scaleX = r;
+			game.stage.scaleY = r;
 		}
 	};
 	window.onresize = resizeWrapper;
@@ -549,6 +555,11 @@ document.bindReady(function(){
 		return;
 	}
 
+	// fullscreen for mobile
+	if(MOBILE) {
+		document.getElementById('wrapper').ondblclick = null;
+	}
+
 	// window focus status
 	window.addEventListener('focus', function(){
 		game.focused = true;
@@ -562,8 +573,9 @@ document.bindReady(function(){
 
 	// init canvas
 	document.getElementById('wrapper').innerHTML = '<canvas id="main_canvas" width="'+WIDTH+'" height="'+HEIGHT+'"></canvas>';
-	startResizeWrapper();
 	game.stage = new createjs.Stage('main_canvas');
+	startResizeWrapper();
+	game.stage.autoClear = false;
 	createjs.Sound.registerPlugins([createjs.HTMLAudioPlugin]);
 	createjs.Sound.alternateExtensions = ["mp3"];
 
