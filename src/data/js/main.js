@@ -72,6 +72,7 @@ game.showCover = function(){
 	//init
 	createjs.Ticker.setFPS(FPS);
 	game.stage.enableMouseOver(FPS);
+	game.stage.dirtyRectBackground(null);
 
 	// show author logo
 	var bottomBar = new createjs.Container();
@@ -168,6 +169,9 @@ game.showCover = function(){
 	progressBar.x = (WIDTH-800) / 2;
 	progressBar.y = 277;
 	progressBar.isAlphaUp = false;
+	createjs.Ticker.addEventListener('tick', function(){
+		game.stage.dirtyRect(0, 310, 960, 350);
+	});
 
 	// animation
 	var centeredMoving = function(cur, center, radius, acc){
@@ -414,12 +418,12 @@ game.showCover = function(){
 				{id:'maps', type:'text', src:'maps.data?v='+VERSION},
 				{id:'ctrl', src:'ctrl.json?v='+VERSION},
 				{id:'words', src:'words_'+game.settings.lang+'.json?v='+VERSION},
-				{id:'bgm1', src:'audio/the_start_of_night.ogg'},
-				{id:'bgm2', src:'audio/lighted_stories.ogg'},
-				{id:'bgm3', src:'audio/tomorrow.ogg'},
-				{id:'bgm4', src:'audio/spreading_white.ogg'},
-				{id:'bgm5', src:'audio/lighted_stories_strings.ogg'},
-				{id:'bgm0', src:'audio/tomorrow_short.ogg'},
+				//{id:'bgm1', src:'audio/the_start_of_night.ogg'},
+				//{id:'bgm2', src:'audio/lighted_stories.ogg'},
+				//{id:'bgm3', src:'audio/tomorrow.ogg'},
+				//{id:'bgm4', src:'audio/spreading_white.ogg'},
+				//{id:'bgm5', src:'audio/lighted_stories_strings.ogg'},
+				//{id:'bgm0', src:'audio/tomorrow_short.ogg'},
 				{id:'tomorrow', src:'image/title_'+game.settings.lang+'.png'},
 				{id:'img6', src:'image/6.png'},
 				{id:'img7', src:'image/7.png'},
@@ -486,14 +490,9 @@ var startResizeWrapper = function(){
 		var r = document.documentElement.clientHeight / HEIGHT;
 		var t = document.documentElement.clientWidth / WIDTH;
 		if(r > t) r = t;
-		if(r >= 1) {
-			if(MOBILE) {
-				mainCanvas.style.width = Math.floor(WIDTH*r) + 'px';
-				mainCanvas.style.height = Math.floor(HEIGHT*r) + 'px';
-			} else {
-				mainCanvas.style.width = WIDTH + 'px';
-				mainCanvas.style.height = HEIGHT + 'px';
-			}
+		if(r >= 1 && !MOBILE) {
+			mainCanvas.style.width = WIDTH + 'px';
+			mainCanvas.style.height = HEIGHT + 'px';
 		} else {
 			mainCanvas.style.width = 'auto';
 			mainCanvas.style.height = 'auto';
@@ -501,6 +500,10 @@ var startResizeWrapper = function(){
 			mainCanvas.height = Math.floor(HEIGHT*r);
 			game.stage.scaleX = r;
 			game.stage.scaleY = r;
+		}
+		if(game.stage.dirtyRect) {
+			game.stage.dirtyRect(0, 0, WIDTH, HEIGHT);
+			game.stage.update();
 		}
 	};
 	window.onresize = resizeWrapper;
@@ -578,6 +581,51 @@ document.bindReady(function(){
 	game.stage.autoClear = false;
 	createjs.Sound.registerPlugins([createjs.HTMLAudioPlugin]);
 	createjs.Sound.alternateExtensions = ["mp3"];
+
+	// dirty rect management
+	var dirtyRectBackground = null;
+	var dirtyRects = [];
+	game.stage.dirtyRectBackground = function(displayObject){
+		dirtyRectBackground = displayObject;
+		dirtyRects = [];
+	};
+	game.stage.dirtyRect = function(x, y, width, height){
+		dirtyRects.push([x, y, width, height]);
+	};
+	var stageUpdate = game.stage.update;
+	game.stage.update = function(){
+		var scale = game.stage.scaleX;
+		/*var x = 0;
+		var y = 0;
+		var width = WIDTH;
+		var height = HEIGHT;
+		var context = game.stage.canvas.getContext('2d');
+		if(dirtyRectBackground) {
+			context.drawImage(dirtyRectBackground.cacheCanvas, x, y, width, height, x*scale, y*scale, width*scale, height*scale);
+		} else {
+			var prev = context.fillStyle;
+			context.fillStyle = '#000';
+			context.fillRect(x*scale, y*scale, width*scale, height*scale);
+			context.fillStyle = prev;
+		}*/
+		while(dirtyRects.length) {
+			var rect = dirtyRects.shift();
+			var x = rect[0];
+			var y = rect[1];
+			var width = rect[2];
+			var height = rect[3];
+			var context = game.stage.canvas.getContext('2d');
+			if(dirtyRectBackground) {
+				context.drawImage(dirtyRectBackground.cacheCanvas, x, y, width, height, x*scale, y*scale, width*scale, height*scale);
+			} else {
+				var prev = context.fillStyle;
+				context.fillStyle = '#000';
+				context.fillRect(x*scale, y*scale, width*scale, height*scale);
+				context.fillStyle = prev;
+			}
+		}
+		stageUpdate.call(game.stage);
+	};
 
 	// load title resource
 	hint.show(game.str[2]);

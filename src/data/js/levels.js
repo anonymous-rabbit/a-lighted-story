@@ -331,6 +331,7 @@ var startLevel = function(level){
 
 	// story loop
 	var storyLoopStart = function(){
+		game.stage.dirtyRectBackground(null);
 		// show level words
 		var story = game.words[level].story;
 		if(story.constructor !== Array) story = [story];
@@ -342,19 +343,13 @@ var startLevel = function(level){
 		storyText.filters = [ new createjs.BlurFilter(2,2,1) ];
 		storyText.cache(-480, -20, 960, 40);
 		var storyContainer = new createjs.Container();
-		var storyContainerBg = new createjs.Shape();
-		storyContainerBg.x = WIDTH/2;
-		storyContainerBg.y = HEIGHT/2;
-		storyContainerBg.graphics.f('#000').r(-480, -30, 960, 60);
-		storyContainerBg.cache(-480, -30, 960, 60);
-		game.stage.addChild(storyContainerBg);
 		game.stage.addChild(storyContainer);
 		var i = 0;
 		var isFadeIn = true;
 		var FADE_ALPHA_MIN = -1;
 		var FADE_ALPHA_STEP = 0.04;
-		var FADE_ALPHA_MAX_STD = 1;
-		var FADE_ALPHA_MAX_PER_CHAR = 0.05;
+		var FADE_ALPHA_MAX_STD = 1.5;
+		var FADE_ALPHA_MAX_PER_CHAR = 0.04;
 		storyContainer.alpha = -1;
 		var fadeAlphaMax = 1;
 		userCtrl.skip = false;
@@ -367,6 +362,7 @@ var startLevel = function(level){
 			return c*FADE_ALPHA_MAX_PER_CHAR + FADE_ALPHA_MAX_STD;
 		};
 		var storyLoopFocused = true;
+		var isLongText = false;
 		var storyLoop = function(){
 			if(!game.focused) {
 				if(storyLoopFocused && game.settings.musicOn)
@@ -391,6 +387,7 @@ var startLevel = function(level){
 			if(isFadeIn) {
 				// init text
 				if(storyContainer.alpha <= FADE_ALPHA_MIN) {
+					isLongText = false;
 					storyContainer.removeAllChildren();
 					if(story[i].charAt(0) === '!') {
 						if(story[i].slice(0,5) === '!img:') {
@@ -408,6 +405,7 @@ var startLevel = function(level){
 							storyText.cache(-480, -60, 960, 240);
 							fadeAlphaMax = storyTime(story[i])*0.3;
 							storyContainer.addChild(storyText);
+							isLongText = true;
 						} else if(story[i].slice(0,6) === '!long:') {
 							storyText.font = STORY_FONT_SIZE+'px'+game.lang.font;
 							storyText.lineHeight = STORY_FONT_SIZE*1.5;
@@ -439,6 +437,8 @@ var startLevel = function(level){
 					i++;
 				}
 			}
+			if(isLongText) game.stage.dirtyRect(0, 210, 960, 240);
+			else game.stage.dirtyRect(0, 240, 960, 60);
 			game.stage.update();
 		};
 		createjs.Ticker.addEventListener('tick', storyLoop);
@@ -517,20 +517,32 @@ var startLevel = function(level){
 		var lights = map.lights;
 		userCtrlReset();
 
+		// mark me and her dirty
+		createjs.Ticker.addEventListener('tick', function(){
+			if(userCtrl.paused) return;
+			if(mePicture) {
+				game.stage.dirtyRect(mePicture.x-16, mePicture.y-16, 32, 32);
+			}
+			if(herPicture) {
+				game.stage.dirtyRect(herPicture.x-16, herPicture.y-16, 32, 32);
+			}
+		});
+
 		// auto pause
 		createjs.Ticker.addEventListener('tick', function(){
 			if(!game.focused && !userCtrl.paused) {
 				pause();
-				userCtrl.up = false;
-				userCtrl.down = false;
-				userCtrl.left = false;
-				userCtrl.right = false;
+				userCtrl.up = 0;
+				userCtrl.down = 0;
+				userCtrl.left = 0;
+				userCtrl.right = 0;
 			}
 		});
 
 		// end level
 		var levelEnd = function(endFunc){
 			createjs.Ticker.removeAllEventListeners('tick');
+			game.stage.dirtyRectBackground(null);
 			var fadingRect = (new createjs.Shape()).set({alpha: 0});
 			fadingRect.graphics.f('black').r(0,0,WIDTH,HEIGHT);
 			game.stage.addChild(fadingRect);
@@ -542,6 +554,7 @@ var startLevel = function(level){
 					return;
 				}
 				fadingRect.alpha += 0.02;
+				game.stage.dirtyRect(0, 0, 960, 540);
 				game.stage.update();
 			};
 			createjs.Ticker.addEventListener('tick', fadingAni);
@@ -552,10 +565,13 @@ var startLevel = function(level){
 		var doneLevel = function(){
 			game.settings.curLevel++;
 			if(controlConfig.bgFadeout) {
+				game.stage.dirtyRectBackground(null);
+				game.stage.addChildAt(map.picture, 0);
 				var fadeFrame = controlConfig.bgFadeout;
 				var fadeStep = controlConfig.bgFadeoutStep;
 				createjs.Ticker.addEventListener('tick', function(){
 					if(userCtrl.paused) return;
+					game.stage.dirtyRect(0, 0, WIDTH, HEIGHT);
 					map.picture.alpha -= fadeStep;
 					lightsLayer.alpha -= fadeStep;
 					if(!MOBILE) cloudsLayer.alpha -= fadeStep;
@@ -659,9 +675,11 @@ var startLevel = function(level){
 					createjs.Sound.setVolume(game.settings.volume*0.003);
 				levelLinkSelected = game.settings.curLevel;
 				levelLinksUpdate();
+				game.stage.dirtyRect(0, 0, 960, 540);
 				game.stage.update();
 			} else if(!userCtrl.paused && pauseLayerShown) {
 				game.stage.removeChild(pauseLayer);
+				game.stage.dirtyRect(0, 0, 960, 540);
 				pauseLayerShown = false;
 				if(game.settings.musicOn)
 					createjs.Sound.setVolume(game.settings.volume/100);
@@ -681,6 +699,7 @@ var startLevel = function(level){
 				if(userCtrl.up || userCtrl.down || userCtrl.left || userCtrl.right) {
 					pauseArrowKey = true;
 					levelLinksUpdate();
+					game.stage.dirtyRect(0, 0, 960, 540);
 					game.stage.update();
 				}
 			} else {
@@ -758,7 +777,7 @@ var startLevel = function(level){
 				else var totalFrame2 = 0;
 				var curFrame = 0;
 				var tickFn = function() {
-					if (userCtrl.paused) return ;
+					if (userCtrl.paused) return;
 					if (curFrame < totalFrame || curFrame < totalFrame2) {
 						if(curFrame < totalFrame) {
 							mePicture.x = ox1 + curFrame * xspeed1;
@@ -781,6 +800,10 @@ var startLevel = function(level){
 			}
 			// show text
 			var textInfo = game.words[level].ends[levelEndIndex++];
+			var textCurY = 0;
+			createjs.Ticker.addEventListener('tick', function(){
+				game.stage.dirtyRect(0, textCurY-20, 960, 40);
+			});
 			map.nextPicture();
 			if(textInfo) {
 				// show text in map
@@ -793,7 +816,7 @@ var startLevel = function(level){
 				text.textBaseline = 'middle';
 				text.x = textInfo[1] || 480;
 				text.y = textInfo[2] || 270;
-				//text.filters = [ new createjs.BlurFilter(2,2,0) ];
+				text.filters = [ new createjs.BlurFilter(2,2,1) ];
 				if(text.textAlign === 'left')
 					text.cache(0, -20, 960, 40);
 				else if(text.textAlign === 'center')
@@ -803,6 +826,7 @@ var startLevel = function(level){
 				mapTextLayer.removeAllChildren();
 				mapTextLayer.addChild(text);
 				text.alpha = 0;
+				textCurY = text.y;
 				var fadeInStep = function(){
 					text.alpha += 0.03;
 					if(text.alpha >= 1) createjs.Ticker.removeEventListener('tick', fadeInStep);
@@ -991,7 +1015,8 @@ var startLevel = function(level){
 		});
 
 		// show map
-		game.stage.addChild(map.picture);
+		map.picture.cache(0, 0, 960, 540);
+		game.stage.dirtyRectBackground(map.picture);
 
 		// add her following me if needed
 		var follower = null;
@@ -1055,13 +1080,14 @@ var startLevel = function(level){
 		// add flash layer
 		var lightsLayer = new createjs.Container().set({x:0,y:0});
 		game.stage.addChild(lightsLayer);
-		if (controlConfig.flash) {
+		if(!MOBILE && controlConfig.flash) {
 			var flash = new createjs.Shape().set({alpha: FLASH_ALPHA_MAX});;
 			flash.graphics.f('black').dr(0, 0, WIDTH, HEIGHT);
 			game.stage.addChild(flash);
 			var sp = -0.005;
 			createjs.Ticker.addEventListener('tick', function() {
 				if(userCtrl.paused) return;
+				game.stage.dirtyRect(0, 0, WIDTH, HEIGHT);
 				flash.alpha += sp;
 				if (flash.alpha >= FLASH_ALPHA_MAX) {
 					sp = -0.005 * (0.5 + Math.random());
@@ -1074,8 +1100,17 @@ var startLevel = function(level){
 
 		// update lights
 		var lightsSpeed = LIGHTS_SPEED[game.settings.difficulty];
+		var lightsPos = [];
 		createjs.Ticker.addEventListener('tick', function(){
 			if(userCtrl.paused) return;
+			// mark dirty
+			for(var i=0; i<lightsPos.length; i++) {
+				var r = lightsPos[i][0] + 6;
+				var x = lightsPos[i][1];
+				var y = lightsPos[i][2];
+				game.stage.dirtyRect(x-r, y-r, r+r, r+r);
+			}
+			lightsPos = [];
 			// redraw lights
 			lightsLayer.removeAllChildren();
 			for(var i=0; i<lights.length; i++) {
@@ -1126,6 +1161,7 @@ var startLevel = function(level){
 				}
 				// draw
 				lightsLayer.addChild(generateLight(Math.round(a.r), a.x, a.y));
+				lightsPos.push([Math.round(a.r), a.x, a.y]);
 			}
 		});
 
@@ -1160,6 +1196,7 @@ var startLevel = function(level){
 			var HP_SHAPE_ANI_SPEED = 0.03;
 			createjs.Ticker.addEventListener('tick', function(){
 				if(userCtrl.paused || userCtrl.animating) return;
+				game.stage.dirtyRect(43, 43, 22, 114);
 				if(hpPicture.alpha <= 0.3)
 					hpShapeAni = 0;
 				if(meHp < meHpOri) {
@@ -1189,6 +1226,7 @@ var startLevel = function(level){
 		game.stage.addChild(fadingRect);
 		var fadingAni = function(){
 			if(userCtrl.paused) return;
+			game.stage.dirtyRect(0, 0, WIDTH, HEIGHT);
 			if(fadingRect.alpha <= 0) {
 				createjs.Ticker.removeEventListener('tick', fadingAni);
 				game.stage.removeChild(fadingRect);
@@ -1216,6 +1254,7 @@ var startLevel = function(level){
 			game.stage.addChild(t);
 			createjs.Ticker.addEventListener('tick', function(){
 				t.text = 'FPS: '+Math.round(createjs.Ticker.getMeasuredFPS());
+				game.stage.dirtyRect(0, 0, 100, 20);
 			});
 		}
 	};
