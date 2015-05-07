@@ -32,6 +32,9 @@ var ME_COLOR_LIGHT = '#F0F9FF';
 var HER_COLOR = '#AD4653';
 var HER_COLOR_LIGHT = '#FFB8C2';
 var HER_COLOR_TEXT = '#FFB8C2';
+var TOUCH_CTRL_X = 72;
+var TOUCH_CTRL_Y = 468;
+var TOUCH_CTRL_R = 60;
 
 // parse a map
 
@@ -1242,9 +1245,27 @@ var startLevel = function(level){
 			game.stage.update();
 		});
 
-		// show hint
-		if(game.words[level].hint)
-			hint.show(game.words[level].hint, 5000);
+		// show a round for touch control
+		if(MOBILE) {
+			var touchCtrlBackground = new createjs.Shape();
+			touchCtrlBackground.graphics.setStrokeStyle(12).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.5)').dc(0, 0, 54);
+			touchCtrlBackground.filters = [ new createjs.BlurFilter(2,2,1) ];
+			touchCtrlBackground.cache(-64, -64, 128, 128);
+			var touchCtrlCur = new createjs.Shape();
+			touchCtrlCur.graphics.f('rgba(255,255,255,0.5)').dc(0, 0, 18);
+			touchCtrlCur.filters = [ new createjs.BlurFilter(6,6,6) ];
+			touchCtrlCur.cache(-24, -24, 48, 48);
+			var touchCtrl = new createjs.Container();
+			touchCtrl.x = TOUCH_CTRL_X;
+			touchCtrl.y = TOUCH_CTRL_Y;
+			touchCtrl.alpha = 0.2;
+			touchCtrl.addChild(touchCtrlCur);
+			touchCtrl.addChild(touchCtrlBackground);
+			game.stage.addChild(touchCtrl);
+			createjs.Ticker.addEventListener('tick', function(){
+				game.stage.dirtyRect(8, 404, 128, 128);
+			});
+		}
 
 		// TODO : DEBUG
 		if(DEBUG.SHOW_FPS) {
@@ -1390,11 +1411,16 @@ game.start = function(){
 	// touch events
 	if(MOBILE) {
 		createjs.Touch.enable(game.stage);
-		game.stage.addEventListener('stagemousedown', function(e){
-			userCtrl.left = 1;
+		game.stage.addEventListener('stagemousemove', function(e){
+			var x = e.stageX - TOUCH_CTRL_X;
+			var y = e.stageY - TOUCH_CTRL_Y;
+			var r = Math.sqrt(x*x+y*y);
+			if(r > TOUCH_CTRL_R || r < TOUCH_CTRL_R / 2) {
+				userCtrl.left = userCtrl.right = userCtrl.up = userCtrl.down = 0;
+			} else {}
 		});
 		game.stage.addEventListener('stagemouseup', function(e){
-			userCtrl.left = 0;
+			userCtrl.left = userCtrl.right = userCtrl.up = userCtrl.down = 0;
 		});
 	}
 
