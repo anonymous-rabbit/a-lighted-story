@@ -71,7 +71,53 @@ game.showCover = function(){
 
 	//init
 	createjs.Ticker.setFPS(FPS);
-	game.stage.enableMouseOver(FPS);
+	if(MOBILE) {
+		game.stage.enableMouseOver(0);
+		createjs.Touch.enable(game.stage);
+		// init touch system
+		var touchAreas = [];
+		game.stage.removeTouchAreas = function(){
+			touchAreas = [];
+		};
+		game.stage.addTouchArea = function(x, y, w, h, cb){
+			touchAreas.push({
+				x1: x,
+				y1: y,
+				x2: x+w,
+				y2: y+h,
+				cb: cb,
+				started: false
+			});
+		};
+		var touchStartFunc = function(e){
+			var touches = e.touches;
+			if(e.type === 'touchend') touches = e.changedTouches;
+			for(var i=0; i<touchAreas.length; i++) {
+				var area = touchAreas[i];
+				for(var j=0; j<touches.length; j++) {
+					var x = (touches[j].pageX - game.stage.offsetX) / game.stage.scaleX;
+					var y = (touches[j].pageY - game.stage.offsetY) / game.stage.scaleY;
+					if(area.x1 > x || area.x2 < x) continue;
+					if(area.y1 > y || area.y2 < y) continue;
+					if(e.type === 'touchend') area.cb('end');
+					else if(area.started) area.cb('move', x, y);
+					else area.cb('start', x, y);
+					area.started = true;
+					break;
+				}
+				if(e.type === 'touchend') continue;
+				if(j === touches.length && area.started) {
+					area.started = false;
+					area.cb('end');
+				}
+			}
+		};
+		game.stage.canvas.addEventListener('touchstart', touchStartFunc);
+		game.stage.canvas.addEventListener('touchmove', touchStartFunc);
+		game.stage.canvas.addEventListener('touchend', touchStartFunc);
+	} else {
+		game.stage.enableMouseOver(FPS);
+	}
 
 	// show author logo
 	var bottomBar = new createjs.Container();
@@ -308,7 +354,7 @@ game.showCover = function(){
 			// save settings
 			game.saveSettings();
 			// remove key bindings
-			fullScreenOn();
+			fullScreenOn(); // TODO
 			window.removeEventListener('keyup', coverKeyFunc);
 			// fade-out everything
 			var b = new createjs.Shape();

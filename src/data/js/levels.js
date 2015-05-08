@@ -14,7 +14,7 @@ var ME_HP_MAX = [5000,2000,1000,700];
 var LIGHTS_SPEED = [2,2.5,3,3.5];
 var P_STATE_CHANGE = [0.02, 0.025, 0.03, 0.035];
 var ME_MOVE_SPEED = 3; // no larger than 6
-var ME_SLOW_RATE = 0.5;  // slow_speed = slow_rate * normal_speed
+var ME_SLOW_RATE = 0.75;  // slow_speed = slow_rate * normal_speed
 var ME_S_R = 12;          // radius of my shadow
 var ME_S_DES_PER_FRAME = 0.003;
 var ME_S_START_ALPHA = 0.096;   // alpha when the shadow appear
@@ -31,9 +31,12 @@ var ME_COLOR_LIGHT = '#F0F9FF';
 var HER_COLOR = '#AD4653';
 var HER_COLOR_LIGHT = '#FFB8C2';
 var HER_COLOR_TEXT = '#FFB8C2';
-var TOUCH_CTRL_X = 72;
-var TOUCH_CTRL_Y = 468;
-var TOUCH_CTRL_R = 60;
+var TOUCH_CTRL_R = 72;
+var TOUCH_CTRL_X = TOUCH_CTRL_R+6;
+var TOUCH_CTRL_Y = HEIGHT-TOUCH_CTRL_R-6;
+var ACTION_CTRL_R = 42;
+var ACTION_CTRL_X = WIDTH-ACTION_CTRL_R-6;
+var ACTION_CTRL_Y = HEIGHT-ACTION_CTRL_R-6;
 
 // parse a map
 
@@ -371,7 +374,7 @@ var startLevel = function(level){
 		var storyLoop = function(){
 			if(!game.focused) {
 				if(storyLoopFocused && game.settings.musicOn)
-					createjs.Sound.setVolume(game.settings.volume*0.003);
+					createjs.Sound.setVolume(MOBILE ? 0 : game.settings.volume*0.003); // TODO pause music
 				storyLoopFocused = false;
 				if(storyContainer.alpha >= 1) return;
 			} else if(!storyLoopFocused) {
@@ -447,6 +450,13 @@ var startLevel = function(level){
 			game.stage.update();
 		};
 		createjs.Ticker.addEventListener('tick', storyLoop);
+		// skip by touch
+		if(MOBILE) {
+			game.stage.removeTouchAreas();
+			game.stage.addTouchArea(0, 0, WIDTH, HEIGHT, function(){
+				userCtrl.skip = true;
+			});
+		}
 	};
 
 	// generate clouds
@@ -930,7 +940,7 @@ var startLevel = function(level){
 					actionAni = false;
 					mePicture.gotoAndPlay('normal');
 				}
-				if(x !== 0 && y !== 0) {
+				if(x || y) {
 					var xyr = Math.sqrt(x*x + y*y);
 					if(xyr < ME_MOVE_SPEED && (userCtrl.relX || userCtrl.relY)) {
 						x = 0;
@@ -1226,6 +1236,79 @@ var startLevel = function(level){
 			});
 		}
 
+		// show circles for touch control
+		if(MOBILE) {
+			game.stage.removeTouchAreas();
+			// show direction control
+			var touchCtrlBackground = new createjs.Shape();
+			touchCtrlBackground.graphics.setStrokeStyle(12).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.5)').dc(0, 0, TOUCH_CTRL_R-6);
+			touchCtrlBackground.filters = [ new createjs.BlurFilter(2,2,1) ];
+			touchCtrlBackground.cache(-TOUCH_CTRL_R-10, -TOUCH_CTRL_R-10, TOUCH_CTRL_R*2+20, TOUCH_CTRL_R*2+20);
+			var touchCtrlCur = new createjs.Shape();
+			touchCtrlCur.graphics.f('rgba(255,255,255,1)').dc(0, 0, 24);
+			touchCtrlCur.filters = [ new createjs.BlurFilter(6,6,6) ];
+			touchCtrlCur.cache(-32, -32, 64, 64);
+			var touchCtrl = new createjs.Container();
+			touchCtrl.x = TOUCH_CTRL_X;
+			touchCtrl.y = TOUCH_CTRL_Y;
+			touchCtrl.alpha = 0.2;
+			touchCtrl.addChild(touchCtrlCur);
+			touchCtrl.addChild(touchCtrlBackground);
+			game.stage.addChild(touchCtrl);
+			createjs.Ticker.addEventListener('tick', function(){
+				game.stage.dirtyRect(TOUCH_CTRL_X-TOUCH_CTRL_R-10, TOUCH_CTRL_Y-TOUCH_CTRL_R-10, TOUCH_CTRL_R*2+20, TOUCH_CTRL_R*2+20);
+				var x = userCtrl.relX;
+				var y = userCtrl.relY;
+				if(!x && !y) {
+					touchCtrlCur.x = 0;
+					touchCtrlCur.y = 0;
+				}
+				touchCtrlCur.x = x;
+				touchCtrlCur.y = y;
+			});
+			// direction events
+			game.stage.addTouchArea(TOUCH_CTRL_X-TOUCH_CTRL_R, TOUCH_CTRL_Y-TOUCH_CTRL_R, TOUCH_CTRL_R*2, TOUCH_CTRL_R*2, function(type, stageX, stageY){
+				if(type === 'end') {
+					userCtrl.relX = x;
+					userCtrl.relY = y;
+					return;
+				}
+				var x = stageX - TOUCH_CTRL_X;
+				var y = stageY - TOUCH_CTRL_Y;
+				var r = Math.sqrt(x*x+y*y);
+				if(r > TOUCH_CTRL_R || r < TOUCH_CTRL_R*0.25) {
+					userCtrl.relX = 0;
+					userCtrl.relY = 0;
+				} else {
+					userCtrl.relX = x;
+					userCtrl.relY = y;
+				}
+			});
+			// show action control
+			var actionCtrlCur = new createjs.Shape();
+			actionCtrlCur.graphics.setStrokeStyle(6).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.5)').dc(0, 0, ACTION_CTRL_R-3);
+			actionCtrlCur.filters = [ new createjs.BlurFilter(2,2,1) ];
+			actionCtrlCur.cache(-ACTION_CTRL_R-4, -ACTION_CTRL_R-4, ACTION_CTRL_R*2+8, ACTION_CTRL_R*2+8);
+			var actionCtrl = new createjs.Container();
+			actionCtrl.x = ACTION_CTRL_X;
+			actionCtrl.y = ACTION_CTRL_Y;
+			actionCtrl.alpha = 0.2;
+			actionCtrl.addChild(actionCtrlCur);
+			game.stage.addChild(actionCtrl);
+			// direction events
+			game.stage.addTouchArea(ACTION_CTRL_X-ACTION_CTRL_R, ACTION_CTRL_Y-ACTION_CTRL_R, ACTION_CTRL_R*2, ACTION_CTRL_R*2, function(type, stageX, stageY){
+				if(type === 'end') {
+					userCtrl.action = false;
+					return;
+				}
+				userCtrl.action = true;
+			});
+			createjs.Ticker.addEventListener('tick', function(){
+				if(userCtrl.action) actionCtrl.alpha = 0.3;
+				else actionCtrl.alpha = 0.2;
+			});
+		}
+
 		// fade in
 		var fadingRect = new createjs.Shape().set({alpha: 1});
 		fadingRect.graphics.f('black').r(0,0,WIDTH,HEIGHT);
@@ -1247,29 +1330,7 @@ var startLevel = function(level){
 			game.stage.update();
 		});
 
-		// show a round for touch control
-		if(MOBILE) {
-			var touchCtrlBackground = new createjs.Shape();
-			touchCtrlBackground.graphics.setStrokeStyle(12).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.5)').dc(0, 0, 54);
-			touchCtrlBackground.filters = [ new createjs.BlurFilter(2,2,1) ];
-			touchCtrlBackground.cache(-64, -64, 128, 128);
-			var touchCtrlCur = new createjs.Shape();
-			touchCtrlCur.graphics.f('rgba(255,255,255,0.5)').dc(0, 0, 18);
-			touchCtrlCur.filters = [ new createjs.BlurFilter(6,6,6) ];
-			touchCtrlCur.cache(-24, -24, 48, 48);
-			var touchCtrl = new createjs.Container();
-			touchCtrl.x = TOUCH_CTRL_X;
-			touchCtrl.y = TOUCH_CTRL_Y;
-			touchCtrl.alpha = 0.2;
-			touchCtrl.addChild(touchCtrlCur);
-			touchCtrl.addChild(touchCtrlBackground);
-			game.stage.addChild(touchCtrl);
-			createjs.Ticker.addEventListener('tick', function(){
-				game.stage.dirtyRect(8, 404, 128, 128);
-			});
-		}
-
-		// TODO : DEBUG
+		// DEBUG
 		if(DEBUG.SHOW_FPS) {
 			var t = new createjs.Text('FPS: ...', '12px monospace', 'red');
 			t.x = 0;
@@ -1408,22 +1469,6 @@ game.start = function(){
 	game.blurFunc = function(e){
 		pause();
 	};
-
-	// touch events
-	if(MOBILE) {
-		createjs.Touch.enable(game.stage);
-		game.stage.addEventListener('stagemousemove', function(e){
-			var x = e.stageX - TOUCH_CTRL_X;
-			var y = e.stageY - TOUCH_CTRL_Y;
-			var r = Math.sqrt(x*x+y*y);
-			if(r > TOUCH_CTRL_R || r < TOUCH_CTRL_R / 2) {
-				userCtrl.left = userCtrl.right = userCtrl.up = userCtrl.down = 0;
-			} else {}
-		});
-		game.stage.addEventListener('stagemouseup', function(e){
-			userCtrl.left = userCtrl.right = userCtrl.up = userCtrl.down = 0;
-		});
-	}
 
 	// enter level
 	game.stage.enableMouseOver(0);
