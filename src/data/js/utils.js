@@ -21,7 +21,7 @@
 		'DOM/Audio':
 			function() {
 				try {
-					if(typeof(document.createElement('audio').src) !== 'undefined')
+					if(createjs.Sound.initializeDefaultPlugins())
 						return true;
 				} catch(e) {}
 			},

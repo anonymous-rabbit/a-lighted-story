@@ -72,7 +72,6 @@ game.showCover = function(){
 	//init
 	createjs.Ticker.setFPS(FPS);
 	game.stage.enableMouseOver(FPS);
-	game.stage.dirtyRectBackground(null);
 
 	// show author logo
 	var bottomBar = new createjs.Container();
@@ -309,7 +308,7 @@ game.showCover = function(){
 			// save settings
 			game.saveSettings();
 			// remove key bindings
-			if(MOBILE) fullScreenOn();
+			fullScreenOn();
 			window.removeEventListener('keyup', coverKeyFunc);
 			// fade-out everything
 			var b = new createjs.Shape();
@@ -418,12 +417,12 @@ game.showCover = function(){
 				{id:'maps', type:'text', src:'maps.data?v='+VERSION},
 				{id:'ctrl', src:'ctrl.json?v='+VERSION},
 				{id:'words', src:'words_'+game.settings.lang+'.json?v='+VERSION},
-				//{id:'bgm1', src:'audio/the_start_of_night.ogg'},
-				//{id:'bgm2', src:'audio/lighted_stories.ogg'},
-				//{id:'bgm3', src:'audio/tomorrow.ogg'},
-				//{id:'bgm4', src:'audio/spreading_white.ogg'},
-				//{id:'bgm5', src:'audio/lighted_stories_strings.ogg'},
-				//{id:'bgm0', src:'audio/tomorrow_short.ogg'},
+				{id:'bgm1', src:'audio/the_start_of_night.ogg'},
+				{id:'bgm2', src:'audio/lighted_stories.ogg'},
+				{id:'bgm3', src:'audio/tomorrow.ogg'},
+				{id:'bgm4', src:'audio/spreading_white.ogg'},
+				{id:'bgm5', src:'audio/lighted_stories_strings.ogg'},
+				{id:'bgm0', src:'audio/tomorrow_short.ogg'},
 				{id:'tomorrow', src:'image/title_'+game.settings.lang+'.png'},
 				{id:'img6', src:'image/6.png'},
 				{id:'img7', src:'image/7.png'},
@@ -501,6 +500,8 @@ var startResizeWrapper = function(){
 			game.stage.scaleX = r;
 			game.stage.scaleY = r;
 		}
+		game.stage.offsetX = mainCanvas.offsetLeft;
+		game.stage.offsetY = mainCanvas.offsetTop;
 		if(game.stage.dirtyRect) {
 			game.stage.dirtyRect(0, 0, WIDTH, HEIGHT);
 			game.stage.update();
@@ -560,7 +561,11 @@ document.bindReady(function(){
 
 	// fullscreen for mobile
 	if(MOBILE) {
-		document.getElementById('wrapper').ondblclick = null;
+		var wrapper = document.getElementById('wrapper')
+		wrapper.ondblclick = null;
+		wrapper.oncontextmenu = function(e){
+			e.preventDefault();
+		};
 	}
 
 	// window focus status
@@ -579,35 +584,16 @@ document.bindReady(function(){
 	game.stage = new createjs.Stage('main_canvas');
 	startResizeWrapper();
 	game.stage.autoClear = false;
-	createjs.Sound.registerPlugins([createjs.HTMLAudioPlugin]);
 	createjs.Sound.alternateExtensions = ["mp3"];
 
 	// dirty rect management
-	var dirtyRectBackground = null;
 	var dirtyRects = [];
-	game.stage.dirtyRectBackground = function(displayObject){
-		dirtyRectBackground = displayObject;
-		dirtyRects = [];
-	};
 	game.stage.dirtyRect = function(x, y, width, height){
 		dirtyRects.push([x, y, width, height]);
 	};
 	var stageUpdate = game.stage.update;
 	game.stage.update = function(){
 		var scale = game.stage.scaleX;
-		/*var x = 0;
-		var y = 0;
-		var width = WIDTH;
-		var height = HEIGHT;
-		var context = game.stage.canvas.getContext('2d');
-		if(dirtyRectBackground) {
-			context.drawImage(dirtyRectBackground.cacheCanvas, x, y, width, height, x*scale, y*scale, width*scale, height*scale);
-		} else {
-			var prev = context.fillStyle;
-			context.fillStyle = '#000';
-			context.fillRect(x*scale, y*scale, width*scale, height*scale);
-			context.fillStyle = prev;
-		}*/
 		while(dirtyRects.length) {
 			var rect = dirtyRects.shift();
 			var x = rect[0];
@@ -615,14 +601,10 @@ document.bindReady(function(){
 			var width = rect[2];
 			var height = rect[3];
 			var context = game.stage.canvas.getContext('2d');
-			if(dirtyRectBackground) {
-				context.drawImage(dirtyRectBackground.cacheCanvas, x, y, width, height, x*scale, y*scale, width*scale, height*scale);
-			} else {
-				var prev = context.fillStyle;
-				context.fillStyle = '#000';
-				context.fillRect(x*scale, y*scale, width*scale, height*scale);
-				context.fillStyle = prev;
-			}
+			var prev = context.fillStyle;
+			context.fillStyle = '#000';
+			context.fillRect(x*scale, y*scale, width*scale, height*scale);
+			context.fillStyle = prev;
 		}
 		stageUpdate.call(game.stage);
 	};

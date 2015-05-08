@@ -13,8 +13,7 @@ var LIGHT_R_MAX = 50*6;
 var ME_HP_MAX = [5000,2000,1000,700];
 var LIGHTS_SPEED = [2,2.5,3,3.5];
 var P_STATE_CHANGE = [0.02, 0.025, 0.03, 0.035];
-var ME_MOVE_SPEED = 3;
-var ME_ACTION_SPEED = 6; // no larger than 6
+var ME_MOVE_SPEED = 3; // no larger than 6
 var ME_SLOW_RATE = 0.5;  // slow_speed = slow_rate * normal_speed
 var ME_S_R = 12;          // radius of my shadow
 var ME_S_DES_PER_FRAME = 0.003;
@@ -234,6 +233,8 @@ var userCtrlReset = function(){
 	userCtrl.down = 0;
 	userCtrl.left = 0;
 	userCtrl.right = 0;
+	userCtrl.relX = 0;
+	userCtrl.relY = 0;
 };
 var userCtrl = {
 	animating: false,
@@ -282,6 +283,8 @@ var startLevel = function(level){
 				createjs.Ticker.removeAllEventListeners('tick');
 				window.removeEventListener('keydown', game.keyDownFunc);
 				window.removeEventListener('keyup', game.keyUpFunc);
+				var wrapper = document.getElementById('wrapper');
+				wrapper.ontouchstart = wrapper.ontouchmove = wrapper.ontouchend = null;
 				game.showCover();
 			}
 		}
@@ -331,7 +334,6 @@ var startLevel = function(level){
 
 	// story loop
 	var storyLoopStart = function(){
-		game.stage.dirtyRectBackground(null);
 		// show level words
 		var story = game.words[level].story;
 		if(story.constructor !== Array) story = [story];
@@ -517,17 +519,6 @@ var startLevel = function(level){
 		var lights = map.lights;
 		userCtrlReset();
 
-		// mark me and her dirty
-		createjs.Ticker.addEventListener('tick', function(){
-			if(userCtrl.paused) return;
-			if(mePicture) {
-				game.stage.dirtyRect(mePicture.x-16, mePicture.y-16, 32, 32);
-			}
-			if(herPicture) {
-				game.stage.dirtyRect(herPicture.x-16, herPicture.y-16, 32, 32);
-			}
-		});
-
 		// auto pause
 		createjs.Ticker.addEventListener('tick', function(){
 			if(!game.focused && !userCtrl.paused) {
@@ -536,13 +527,14 @@ var startLevel = function(level){
 				userCtrl.down = 0;
 				userCtrl.left = 0;
 				userCtrl.right = 0;
+				userCtrl.relX = 0;
+				userCtrl.relY = 0;
 			}
 		});
 
 		// end level
 		var levelEnd = function(endFunc){
 			createjs.Ticker.removeAllEventListeners('tick');
-			game.stage.dirtyRectBackground(null);
 			var fadingRect = (new createjs.Shape()).set({alpha: 0});
 			fadingRect.graphics.f('black').r(0,0,WIDTH,HEIGHT);
 			game.stage.addChild(fadingRect);
@@ -554,7 +546,6 @@ var startLevel = function(level){
 					return;
 				}
 				fadingRect.alpha += 0.02;
-				game.stage.dirtyRect(0, 0, 960, 540);
 				game.stage.update();
 			};
 			createjs.Ticker.addEventListener('tick', fadingAni);
@@ -565,8 +556,6 @@ var startLevel = function(level){
 		var doneLevel = function(){
 			game.settings.curLevel++;
 			if(controlConfig.bgFadeout) {
-				game.stage.dirtyRectBackground(null);
-				game.stage.addChildAt(map.picture, 0);
 				var fadeFrame = controlConfig.bgFadeout;
 				var fadeStep = controlConfig.bgFadeoutStep;
 				createjs.Ticker.addEventListener('tick', function(){
@@ -675,11 +664,9 @@ var startLevel = function(level){
 					createjs.Sound.setVolume(game.settings.volume*0.003);
 				levelLinkSelected = game.settings.curLevel;
 				levelLinksUpdate();
-				game.stage.dirtyRect(0, 0, 960, 540);
 				game.stage.update();
 			} else if(!userCtrl.paused && pauseLayerShown) {
 				game.stage.removeChild(pauseLayer);
-				game.stage.dirtyRect(0, 0, 960, 540);
 				pauseLayerShown = false;
 				if(game.settings.musicOn)
 					createjs.Sound.setVolume(game.settings.volume/100);
@@ -699,7 +686,6 @@ var startLevel = function(level){
 				if(userCtrl.up || userCtrl.down || userCtrl.left || userCtrl.right) {
 					pauseArrowKey = true;
 					levelLinksUpdate();
-					game.stage.dirtyRect(0, 0, 960, 540);
 					game.stage.update();
 				}
 			} else {
@@ -800,10 +786,6 @@ var startLevel = function(level){
 			}
 			// show text
 			var textInfo = game.words[level].ends[levelEndIndex++];
-			var textCurY = 0;
-			createjs.Ticker.addEventListener('tick', function(){
-				game.stage.dirtyRect(0, textCurY-20, 960, 40);
-			});
 			map.nextPicture();
 			if(textInfo) {
 				// show text in map
@@ -826,7 +808,6 @@ var startLevel = function(level){
 				mapTextLayer.removeAllChildren();
 				mapTextLayer.addChild(text);
 				text.alpha = 0;
-				textCurY = text.y;
 				var fadeInStep = function(){
 					text.alpha += 0.03;
 					if(text.alpha >= 1) createjs.Ticker.removeEventListener('tick', fadeInStep);
@@ -876,7 +857,6 @@ var startLevel = function(level){
 							meHp -= ME_R*2*ME_DAMAGE_PER_R*lightHurt * 0.5;
 						else
 							meHp -= (a.r-d2)*ME_DAMAGE_PER_R*lightHurt * 0.5;
-						console.info(meHp);
 					}
 				}
 			}
@@ -906,10 +886,15 @@ var startLevel = function(level){
 			// move
 			var x = 0;
 			var y = 0;
-			if(userCtrl.up) y--;
-			if(userCtrl.down) y++;
-			if(userCtrl.left) x--;
-			if(userCtrl.right) x++;
+			if(userCtrl.relX || userCtrl.relY) {
+				x = userCtrl.relX;
+				y = userCtrl.relY;
+			} else {
+				if(userCtrl.up) y--;
+				if(userCtrl.down) y++;
+				if(userCtrl.left) x--;
+				if(userCtrl.right) x++;
+			}
 			if (controlConfig.onlyRight) {
 				if(x < 0) x = 0;
 				y = 0;
@@ -928,16 +913,12 @@ var startLevel = function(level){
 					mePicture.gotoAndPlay('fast');
 				}
 				if(x !== 0 || y !== 0) {
-					var p = 0;
-					if(y === 0 && x === 1) p = 0;
-					else if(y === 0 && x === -1) p = Math.PI;
-					else if(x === 0) p = Math.PI/2;
-					else if(x === -1) p = Math.PI*3/4;
-					else if(x === 1) p = Math.PI/4;
-					if(y === -1) p = -p;
+					var xyr = Math.sqrt(x*x + y*y);
+					var p = Math.acos(x/xyr);
+					if(y < 0) p = 2*Math.PI - p;
 					p += Math.random()*ME_ACTION_DIF*2 - ME_ACTION_DIF;
-					x = ME_ACTION_SPEED * Math.cos(p);
-					y = ME_ACTION_SPEED * Math.sin(p);
+					x = ME_MOVE_SPEED * Math.cos(p);
+					y = ME_MOVE_SPEED * Math.sin(p);
 					running = true;
 				}
 			} else {
@@ -946,12 +927,17 @@ var startLevel = function(level){
 					actionAni = false;
 					mePicture.gotoAndPlay('normal');
 				}
+				if(x !== 0 && y !== 0) {
+					var xyr = Math.sqrt(x*x + y*y);
+					if(xyr < ME_MOVE_SPEED && (userCtrl.relX || userCtrl.relY)) {
+						x = 0;
+						y = 0;
+					}
+					x /= xyr;
+					y /= xyr;
+				}
 				x *= ME_MOVE_SPEED;
 				y *= ME_MOVE_SPEED;
-				if(x !== 0 && y !== 0) {
-					x /= 1.4142136;
-					y /= 1.4142136;
-				}
 			}
 			if (controlConfig.slow) {
 				x *= ME_SLOW_RATE;
@@ -959,30 +945,51 @@ var startLevel = function(level){
 			}
 			// check walls
 			if(x || y) {
-				var px = mePicture.x + x;
-				var py = mePicture.y + y;
-				var checkWall = function(x, y){
-					if(x < ME_R || y < ME_R || x >= WIDTH-ME_R || y >= HEIGHT-ME_R) return true;
-					if( map.wall[ Math.floor((x-12)/6) + Math.floor((y-12)/6)*160 ] > 1 ) return true;
-					if( map.wall[ Math.floor((x+12)/6) + Math.floor((y-12)/6)*160 ] > 1 ) return true;
-					if( map.wall[ Math.floor((x+12)/6) + Math.floor((y+12)/6)*160 ] > 1 ) return true;
-					if( map.wall[ Math.floor((x-12)/6) + Math.floor((y+12)/6)*160 ] > 1 ) return true;
-					if( map.wall[ Math.floor(x/6) + Math.floor(y/6)*160 ] ) return true;
-					return false;
-				};
-				if(checkWall(px, py)) {
-					if(!checkWall(mePicture.x + x, mePicture.y)) {
-						if(y > 0) py = (Math.floor(py/6))*6 - 1e-3;
-						else if(y < 0) py = (Math.floor(py/6)+1)*6;
-					} else if(!checkWall(mePicture.x, mePicture.y + y)) {
-						if(x > 0) px = (Math.floor(px/6))*6 - 1e-3;
-						else if(x < 0) px = (Math.floor(px/6)+1)*6;
-					} else {
-						if(x > 0) px = (Math.floor(px/6))*6 - 1e-3;
-						else if(x < 0) px = (Math.floor(px/6)+1)*6;
-						if(y > 0) py = (Math.floor(py/6))*6 - 1e-3;
-						else if(y < 0) py = (Math.floor(py/6)+1)*6;
+				var bx = mePicture.x;
+				var by = mePicture.y;
+				for(var mul = (running?2:1); mul; mul--) {
+					var px = bx + x;
+					var py = by + y;
+					var checkWall = function(x, y){
+						// map borders
+						if(x < ME_R || y < ME_R || x >= WIDTH-ME_R || y >= HEIGHT-ME_R) return true;
+						// center cannot run into blurred wall
+						var cx = Math.floor(x/6);
+						var cy = Math.floor(y/6);
+						if( map.wall[ cx + cy*160 ] ) return true;
+						// border cannot run into wall
+						for(var px=cx-1; px<=cx+2; px++) {
+							for(var py=cy-1; py<=cy+2; py++) {
+								var dx = px*6 - x;
+								var dy = py*6 - y;
+								if(dx*dx + dy*dy > 143) continue;
+								if( map.wall[ (px-1) + (py-1)*160 ] > 1 ) return true;
+								if( map.wall[ (px-1) + py*160 ] > 1 ) return true;
+								if( map.wall[ px + (py-1)*160 ] > 1 ) return true;
+								if( map.wall[ px + py*160 ] > 1 ) return true;
+							}
+						}
+						return false;
+					};
+					if(checkWall(px, py)) {
+						var candidatePoints = [];
+						if(y <= 0) candidatePoints.push([px, (Math.floor(py/6))*6 + 6]);
+						if(y >= 0) candidatePoints.push([px, (Math.floor(py/6))*6 - 1e-3]);
+						if(x <= 0) candidatePoints.push([(Math.floor(px/6))*6 + 6, py]);
+						if(x >= 0) candidatePoints.push([(Math.floor(px/6))*6 - 1e-3, py]);
+						for(var i=0; i<candidatePoints.length; i++) {
+							px = candidatePoints[i][0];
+							py = candidatePoints[i][1];
+							if(!checkWall(px, py)) break;
+						}
+						if(i === candidatePoints.length) {
+							px = bx;
+							py = by;
+							break;
+						}
 					}
+					bx = px;
+					by = py;
 				}
 				if (px - mePicture.x || py - mePicture.y) {
 					mePicture.x = px;
@@ -1015,8 +1022,7 @@ var startLevel = function(level){
 		});
 
 		// show map
-		map.picture.cache(0, 0, 960, 540);
-		game.stage.dirtyRectBackground(map.picture);
+		game.stage.addChild(map.picture);
 
 		// add her following me if needed
 		var follower = null;
@@ -1087,7 +1093,6 @@ var startLevel = function(level){
 			var sp = -0.005;
 			createjs.Ticker.addEventListener('tick', function() {
 				if(userCtrl.paused) return;
-				game.stage.dirtyRect(0, 0, WIDTH, HEIGHT);
 				flash.alpha += sp;
 				if (flash.alpha >= FLASH_ALPHA_MAX) {
 					sp = -0.005 * (0.5 + Math.random());
@@ -1108,7 +1113,6 @@ var startLevel = function(level){
 				var r = lightsPos[i][0] + 6;
 				var x = lightsPos[i][1];
 				var y = lightsPos[i][2];
-				game.stage.dirtyRect(x-r, y-r, r+r, r+r);
 			}
 			lightsPos = [];
 			// redraw lights
@@ -1196,7 +1200,6 @@ var startLevel = function(level){
 			var HP_SHAPE_ANI_SPEED = 0.03;
 			createjs.Ticker.addEventListener('tick', function(){
 				if(userCtrl.paused || userCtrl.animating) return;
-				game.stage.dirtyRect(43, 43, 22, 114);
 				if(hpPicture.alpha <= 0.3)
 					hpShapeAni = 0;
 				if(meHp < meHpOri) {
@@ -1226,7 +1229,6 @@ var startLevel = function(level){
 		game.stage.addChild(fadingRect);
 		var fadingAni = function(){
 			if(userCtrl.paused) return;
-			game.stage.dirtyRect(0, 0, WIDTH, HEIGHT);
 			if(fadingRect.alpha <= 0) {
 				createjs.Ticker.removeEventListener('tick', fadingAni);
 				game.stage.removeChild(fadingRect);
@@ -1254,7 +1256,6 @@ var startLevel = function(level){
 			game.stage.addChild(t);
 			createjs.Ticker.addEventListener('tick', function(){
 				t.text = 'FPS: '+Math.round(createjs.Ticker.getMeasuredFPS());
-				game.stage.dirtyRect(0, 0, 100, 20);
 			});
 		}
 	};
@@ -1389,12 +1390,70 @@ game.start = function(){
 
 	// touch events
 	if(MOBILE) {
-		createjs.Touch.enable(game.stage);
-		game.stage.addEventListener('stagemousedown', function(e){
-			userCtrl.left = 1;
+		var wrapper = document.getElementById('wrapper');
+		/*wrapper.ontouchstart = wrapper.ontouchmove = function(e){
+			var tx = e.touches[0].clientX;
+			var ty = e.touches[0].clientY;
+			if(e.touches.length > 1) {
+				tx = (tx + e.touches[1].clientX) / 2;
+				ty = (ty + e.touches[1].clientY) / 2;
+				userCtrl.action = true;
+			} else {
+				userCtrl.action = false;
+			}
+			userCtrl.relX = (tx - game.stage.offsetX) / game.stage.scaleX;
+			userCtrl.relY = (ty - game.stage.offsetY) / game.stage.scaleY;
+			e.preventDefault();
+		};
+		wrapper.ontouchend = function(e){
+			userCtrl.relX = 0;
+			userCtrl.relY = 0;
+			userCtrl.action = false;
+			e.preventDefault();
+		};*/
+		var touchStart = false;
+		var touchStartX = 0;
+		var touchStartY = 0;
+		var touchStartTime = 0;
+		var touchEndX = 0;
+		var touchEndY = 0;
+		wrapper.addEventListener('touchstart', function(e){
+			e.preventDefault();
+			if(e.touches.length > 1) {
+				// run
+				userCtrl.action = true;
+				touchStart = false;
+			} else {
+				// record state
+				touchEndX = touchStartX = e.touches[0].clientX;
+				touchEndY = touchStartY = e.touches[0].clientY;
+				touchStartTime = Date.now();
+				touchStart = true;
+			}
 		});
-		game.stage.addEventListener('stagemouseup', function(e){
-			userCtrl.left = 0;
+		wrapper.addEventListener('touchmove', function(e){
+			if(!touchStart) return;
+			touchEndX = e.touches[0].clientX;
+			touchEndY = e.touches[0].clientY;
+		});
+		wrapper.addEventListener('touchend', function(e){
+			e.preventDefault();
+			userCtrl.action = false;
+			if(!touchStart) return;
+			touchStart = false;
+			var SWIPE_LENGTH = 100;
+			var SWIPE_TIME = 1000;
+			if(Date.now() - touchStartTime > SWIPE_TIME) return;
+			var dx = touchEndX - touchStartX;
+			var dy = touchEndY - touchStartY;
+			console.info([dx,dy]);
+			if(dx*dx + dy*dy < SWIPE_LENGTH*SWIPE_LENGTH) {
+				userCtrl.relX = 0;
+				userCtrl.relY = 0;
+			} else {
+				userCtrl.relX = dx / game.stage.scaleX;
+				userCtrl.relY = dy / game.stage.scaleY;
+			}
 		});
 	}
 
