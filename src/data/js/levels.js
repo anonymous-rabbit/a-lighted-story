@@ -31,6 +31,9 @@ var ME_COLOR_LIGHT = '#F0F9FF';
 var HER_COLOR = '#AD4653';
 var HER_COLOR_LIGHT = '#FFB8C2';
 var HER_COLOR_TEXT = '#FFB8C2';
+var TOUCH_CTRL_X = 72;
+var TOUCH_CTRL_Y = 468;
+var TOUCH_CTRL_R = 60;
 
 // parse a map
 
@@ -1244,9 +1247,27 @@ var startLevel = function(level){
 			game.stage.update();
 		});
 
-		// show hint
-		if(game.words[level].hint)
-			hint.show(game.words[level].hint, 5000);
+		// show a round for touch control
+		if(MOBILE) {
+			var touchCtrlBackground = new createjs.Shape();
+			touchCtrlBackground.graphics.setStrokeStyle(12).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.5)').dc(0, 0, 54);
+			touchCtrlBackground.filters = [ new createjs.BlurFilter(2,2,1) ];
+			touchCtrlBackground.cache(-64, -64, 128, 128);
+			var touchCtrlCur = new createjs.Shape();
+			touchCtrlCur.graphics.f('rgba(255,255,255,0.5)').dc(0, 0, 18);
+			touchCtrlCur.filters = [ new createjs.BlurFilter(6,6,6) ];
+			touchCtrlCur.cache(-24, -24, 48, 48);
+			var touchCtrl = new createjs.Container();
+			touchCtrl.x = TOUCH_CTRL_X;
+			touchCtrl.y = TOUCH_CTRL_Y;
+			touchCtrl.alpha = 0.2;
+			touchCtrl.addChild(touchCtrlCur);
+			touchCtrl.addChild(touchCtrlBackground);
+			game.stage.addChild(touchCtrl);
+			createjs.Ticker.addEventListener('tick', function(){
+				game.stage.dirtyRect(8, 404, 128, 128);
+			});
+		}
 
 		// TODO : DEBUG
 		if(DEBUG.SHOW_FPS) {
@@ -1390,70 +1411,17 @@ game.start = function(){
 
 	// touch events
 	if(MOBILE) {
-		var wrapper = document.getElementById('wrapper');
-		/*wrapper.ontouchstart = wrapper.ontouchmove = function(e){
-			var tx = e.touches[0].clientX;
-			var ty = e.touches[0].clientY;
-			if(e.touches.length > 1) {
-				tx = (tx + e.touches[1].clientX) / 2;
-				ty = (ty + e.touches[1].clientY) / 2;
-				userCtrl.action = true;
-			} else {
-				userCtrl.action = false;
-			}
-			userCtrl.relX = (tx - game.stage.offsetX) / game.stage.scaleX;
-			userCtrl.relY = (ty - game.stage.offsetY) / game.stage.scaleY;
-			e.preventDefault();
-		};
-		wrapper.ontouchend = function(e){
-			userCtrl.relX = 0;
-			userCtrl.relY = 0;
-			userCtrl.action = false;
-			e.preventDefault();
-		};*/
-		var touchStart = false;
-		var touchStartX = 0;
-		var touchStartY = 0;
-		var touchStartTime = 0;
-		var touchEndX = 0;
-		var touchEndY = 0;
-		wrapper.addEventListener('touchstart', function(e){
-			e.preventDefault();
-			if(e.touches.length > 1) {
-				// run
-				userCtrl.action = true;
-				touchStart = false;
-			} else {
-				// record state
-				touchEndX = touchStartX = e.touches[0].clientX;
-				touchEndY = touchStartY = e.touches[0].clientY;
-				touchStartTime = Date.now();
-				touchStart = true;
-			}
+		createjs.Touch.enable(game.stage);
+		game.stage.addEventListener('stagemousemove', function(e){
+			var x = e.stageX - TOUCH_CTRL_X;
+			var y = e.stageY - TOUCH_CTRL_Y;
+			var r = Math.sqrt(x*x+y*y);
+			if(r > TOUCH_CTRL_R || r < TOUCH_CTRL_R / 2) {
+				userCtrl.left = userCtrl.right = userCtrl.up = userCtrl.down = 0;
+			} else {}
 		});
-		wrapper.addEventListener('touchmove', function(e){
-			if(!touchStart) return;
-			touchEndX = e.touches[0].clientX;
-			touchEndY = e.touches[0].clientY;
-		});
-		wrapper.addEventListener('touchend', function(e){
-			e.preventDefault();
-			userCtrl.action = false;
-			if(!touchStart) return;
-			touchStart = false;
-			var SWIPE_LENGTH = 100;
-			var SWIPE_TIME = 1000;
-			if(Date.now() - touchStartTime > SWIPE_TIME) return;
-			var dx = touchEndX - touchStartX;
-			var dy = touchEndY - touchStartY;
-			console.info([dx,dy]);
-			if(dx*dx + dy*dy < SWIPE_LENGTH*SWIPE_LENGTH) {
-				userCtrl.relX = 0;
-				userCtrl.relY = 0;
-			} else {
-				userCtrl.relX = dx / game.stage.scaleX;
-				userCtrl.relY = dy / game.stage.scaleY;
-			}
+		game.stage.addEventListener('stagemouseup', function(e){
+			userCtrl.left = userCtrl.right = userCtrl.up = userCtrl.down = 0;
 		});
 	}
 
