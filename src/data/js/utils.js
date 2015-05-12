@@ -165,6 +165,7 @@ document.bindReady(function(){
 			aniObj = setInterval(aniFrame, ANIMATION_INTERVAL);
 		};
 		var show = function(text, timeout){
+			if(MOBILE) return;
 			div.innerHTML = textToHtml(text);
 			if(!isShown) {
 				isShown = true;
@@ -181,10 +182,12 @@ document.bindReady(function(){
 			timeoutObj = setTimeout(hide, timeout);
 		};
 		var showLink = function(text, href){
+			if(MOBILE) return;
 			show(text);
 			div.innerHTML = '<a href="'+href+'" target="_blank">'+div.innerHTML+'</a>';
 		};
 		var hide = function(){
+			if(MOBILE) return;
 			if(isShown) {
 				isShown = false;
 				aniStart();
@@ -194,6 +197,9 @@ document.bindReady(function(){
 				timeoutObj = false;
 			}
 		};
+		if(MOBILE) {
+			div.parentNode.removeChild(div);
+		}
 		return {
 			show: show,
 			showLink: showLink,

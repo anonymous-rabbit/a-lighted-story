@@ -115,6 +115,7 @@ var parseMap = function(level){
 	// add image above if needed
 	if(game.ctrl[level].bgimage) {
 		var img = new createjs.Bitmap( game.mainResource.getResult('img' + game.ctrl[level].bgimage) );
+		img.cache(0, 0, WIDTH, HEIGHT);
 		map.picture.addChild(img);
 	}
 	map.nextPicture = function(){
@@ -287,6 +288,7 @@ var startLevel = function(level){
 				game.started = false;
 				createjs.Sound.stop();
 				createjs.Ticker.removeAllEventListeners('tick');
+				game.stage.removeTouchAreas();
 				window.removeEventListener('keydown', game.keyDownFunc);
 				window.removeEventListener('keyup', game.keyUpFunc);
 				var wrapper = document.getElementById('wrapper');
@@ -555,6 +557,7 @@ var startLevel = function(level){
 				if(fadingRect.alpha >= 1) {
 					createjs.Ticker.removeEventListener('tick', fadingAni);
 					game.stage.removeAllChildren();
+					game.stage.removeTouchAreas();
 					endFunc();
 					return;
 				}
@@ -1306,6 +1309,8 @@ var startLevel = function(level){
 			createjs.Ticker.addEventListener('tick', function(){
 				if(userCtrl.action) actionCtrl.alpha = 0.3;
 				else actionCtrl.alpha = 0.2;
+				if(userCtrl.relX || userCtrl.relY) touchCtrl.alpha = 0.3;
+				else touchCtrl.alpha = 0.2;
 			});
 		}
 
