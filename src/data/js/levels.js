@@ -25,17 +25,20 @@ var ME_ACTION_DAMAGE = 4;
 var ME_ACTION_DIF = Math.PI/8;
 var ME_DAMAGE_PER_R = 1;
 var STORY_FONT_SIZE = 28;
-var MAP_TEXT_FONT_SIZE = 26;
+var MAP_TEXT_FONT_SIZE = 28;
 var ME_COLOR = '#808080';
 var ME_COLOR_LIGHT = '#F0F9FF';
 var HER_COLOR = '#AD4653';
 var HER_COLOR_LIGHT = '#FFB8C2';
 var HER_COLOR_TEXT = '#FFB8C2';
-var TOUCH_CTRL_R = 72;
-var TOUCH_CTRL_X = TOUCH_CTRL_R+6;
+var PAUSE_CTRL_R = 30;
+var PAUSE_CTRL_X = WIDTH-PAUSE_CTRL_R-6;
+var PAUSE_CTRL_Y = PAUSE_CTRL_R+6;
+var TOUCH_CTRL_R = 90;
+var TOUCH_CTRL_X = WIDTH-TOUCH_CTRL_R-6;
 var TOUCH_CTRL_Y = HEIGHT-TOUCH_CTRL_R-6;
 var ACTION_CTRL_R = 42;
-var ACTION_CTRL_X = WIDTH-ACTION_CTRL_R-6;
+var ACTION_CTRL_X = ACTION_CTRL_R+6;
 var ACTION_CTRL_Y = HEIGHT-ACTION_CTRL_R-6;
 
 // parse a map
@@ -258,10 +261,14 @@ var userCtrl = {
 // pause and unpause
 
 var pause = function(){
+	if(location.hash === '#game') history.go(-1);
 	userCtrl.paused = true;
+	if(MOBILE) fullScreenOff();
 };
 var unpause = function(){
+	if(location.hash !== '#game') history.go(1);
 	userCtrl.paused = false;
+	if(MOBILE) fullScreenOn();
 };
 var startAnimate = function(){
 	userCtrl.animating = true;
@@ -374,6 +381,7 @@ var startLevel = function(level){
 		var storyLoopFocused = true;
 		var isLongText = false;
 		var storyLoop = function(){
+			if(userCtrl.paused) unpause();
 			if(!game.focused) {
 				if(storyLoopFocused && game.settings.musicOn)
 					createjs.Sound.setVolume(MOBILE ? 0 : game.settings.volume*0.003); // TODO pause music
@@ -513,6 +521,8 @@ var startLevel = function(level){
 
 	// show map
 	var storyLoopEnd = function(){
+		if(MOBILE) game.stage.removeTouchAreas();
+
 		// save progress
 		if(game.settings.levelReached < level)
 			game.settings.levelReached = level;
@@ -614,8 +624,18 @@ var startLevel = function(level){
 		) );
 		var pauseLayerFrame = new createjs.Container();
 		pauseLayer.addChild(pauseLayerFrame);
-		pauseLayerFrame.x = WIDTH/2 - 250;
-		pauseLayerFrame.y = HEIGHT/2 - 150;
+		if(MOBILE) {
+			pauseLayerFrame.x = WIDTH/2 - 350;
+			pauseLayerFrame.y = HEIGHT/2 - 210;
+			pauseLayerFrame.scaleX = 1.4;
+			pauseLayerFrame.scaleY = 1.4;
+			var pauseLayerTouchArea = function(x, y, w, h, cb){
+				game.stage.addTouchArea(x * 1.4 + WIDTH/2 - 350, y * 1.4 + HEIGHT/2 - 210, w * 1.4, h * 1.4, cb);
+			};
+		} else {
+			pauseLayerFrame.x = WIDTH/2 - 250;
+			pauseLayerFrame.y = HEIGHT/2 - 150;
+		}
 		var pauseLayerBackground = (new createjs.Shape(
 			(new createjs.Graphics()).f('rgba(255,255,255,0.7)').r(0,0,500,300)
 		)).set({filters: [ new createjs.BlurFilter(10,10,4) ]});
@@ -624,18 +644,35 @@ var startLevel = function(level){
 		pauseLayerFrame.addChild(new createjs.Shape(
 			(new createjs.Graphics()).f('rgba(64,64,64,0.7)').r(30,80,440,3)
 		));
-		pauseLayerFrame.addChild( (new createjs.Text(game.str[23], '20px'+game.lang.font, 'black')).set({
-			textAlign: 'center',
-			textBaseline: 'top',
-			x: 250,
-			y: 40
-		}) );
-		pauseLayerFrame.addChild( (new createjs.Text(game.str[24], '16px'+game.lang.font, 'rgb(64,64,64)')).set({
-			textAlign: 'center',
-			textBaseline: 'bottom',
-			x: 250,
-			y: 270
-		}) );
+		if(MOBILE) {
+			var pauseLayerContinue = (new createjs.Text('CONTINUE', '20px'+game.lang.font, 'black')).set({
+				textAlign: 'left',
+				textBaseline: 'top',
+				x: 50,
+				y: 50
+			});
+			pauseLayerFrame.addChild( pauseLayerContinue );
+			var pauseLayerCover = (new createjs.Text('COVER', '20px'+game.lang.font, 'rgb(64,64,64)')).set({
+				textAlign: 'right',
+				textBaseline: 'top',
+				x: 450,
+				y: 50
+			});
+			pauseLayerFrame.addChild( pauseLayerCover );
+		} else {
+			pauseLayerFrame.addChild( (new createjs.Text(game.str[23], '20px'+game.lang.font, 'black')).set({
+				textAlign: 'center',
+				textBaseline: 'top',
+				x: 250,
+				y: 40
+			}) );
+			pauseLayerFrame.addChild( (new createjs.Text(game.str[24], '16px'+game.lang.font, 'rgb(64,64,64)')).set({
+				textAlign: 'center',
+				textBaseline: 'bottom',
+				x: 250,
+				y: 270
+			}) );
+		}
 		var levelLinkFrame = new createjs.Container();
 		pauseLayerFrame.addChild(levelLinkFrame);
 		var levelLinkSelected = 0;
@@ -675,6 +712,7 @@ var startLevel = function(level){
 			// show or hide frame
 			if(userCtrl.paused && !pauseLayerShown) {
 				game.stage.addChild(pauseLayer);
+				if(MOBILE) game.stage.alterTouchAreas();
 				pauseLayerShown = true;
 				if(game.settings.musicOn)
 					createjs.Sound.setVolume(game.settings.volume*0.003);
@@ -683,6 +721,7 @@ var startLevel = function(level){
 				game.stage.update();
 			} else if(!userCtrl.paused && pauseLayerShown) {
 				game.stage.removeChild(pauseLayer);
+				if(MOBILE) game.stage.alterTouchAreas();
 				pauseLayerShown = false;
 				if(game.settings.musicOn)
 					createjs.Sound.setVolume(game.settings.volume/100);
@@ -734,6 +773,41 @@ var startLevel = function(level){
 				}, 0);
 			}
 		});
+		if(MOBILE) {
+			// pause layer touch areas
+			game.stage.alterTouchAreas();
+			// continue
+			var rect = pauseLayerContinue.getBounds();
+			pauseLayerTouchArea(pauseLayerContinue.x, pauseLayerContinue.y, rect.width, rect.height, function(){
+				if(!userCtrl.paused) return;
+				unpause();
+			});
+			// cover
+			rect = pauseLayerCover.getBounds();
+			pauseLayerTouchArea(pauseLayerCover.x-rect.width, pauseLayerCover.y, rect.width, rect.height, function(){
+				if(!userCtrl.paused) return;
+				userCtrl.reset = true;
+				pauseLayerCover.color = '#000';
+			});
+			// level links
+			for(var i=0; i<=game.settings.levelReached; i++) {
+				var r = Math.floor(i/7) + 1;
+				var c = i%7 + 1;
+				if(i === 21) {
+					r = 3;
+					c = 8;
+				}
+				(function(c,r,i){
+					pauseLayerTouchArea(c*50+25-20, r*50+70-20, 40, 40, function(){
+						if(!userCtrl.paused) return;
+						levelLinkSelected = i;
+						levelLinksUpdate();
+						userCtrl.skip = true;
+					});
+				})(c,r,i);
+			}
+			game.stage.alterTouchAreas();
+		}
 
 		// reset
 		createjs.Ticker.addEventListener('tick', function(){
@@ -809,7 +883,7 @@ var startLevel = function(level){
 				text.font = MAP_TEXT_FONT_SIZE+'px'+game.lang.font;
 				text.lineHeight = 36;
 				text.color = textInfo[4] || (controlConfig.player === 2 ? HER_COLOR_LIGHT : '#fff');
-				text.text = textInfo[0];
+				text.text = (MOBILE && textInfo[5]) || textInfo[0];
 				text.textAlign = textInfo[3] || 'center';
 				text.textBaseline = 'middle';
 				text.x = textInfo[1] || 480;
@@ -1205,6 +1279,10 @@ var startLevel = function(level){
 			var h = 100*meHp/meHpMax;
 			hpShape.graphics.f('#fff').r(0,100-h,8,h);
 			var hpPicture = new createjs.Container().set({x:50, y:50, alpha:0.3});
+			if(MOBILE) {
+				hpPicture.scaleX = hpPicture.scaleY = 1.5;
+				hpPicture.x = hpPicture.y = 35;
+			}
 			if(map.white) whiteMap.alpha = 1.3 - hpPicture.alpha;
 			hpPicture.addChild(hpBackground);
 			hpPicture.addChild(hpOutline);
@@ -1241,16 +1319,17 @@ var startLevel = function(level){
 
 		// show circles for touch control
 		if(MOBILE) {
-			game.stage.removeTouchAreas();
 			// show direction control
 			var touchCtrlBackground = new createjs.Shape();
-			touchCtrlBackground.graphics.setStrokeStyle(12).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.5)').dc(0, 0, TOUCH_CTRL_R-6);
+			touchCtrlBackground.graphics.setStrokeStyle(12).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.5)');
+			if(controlConfig.ctrlColorDark) touchCtrlBackground.graphics.s('rgba(64,64,64,1)').f('rgba(64,64,64,0.5)');
+			touchCtrlBackground.graphics.dc(0, 0, TOUCH_CTRL_R-6);
 			touchCtrlBackground.filters = [ new createjs.BlurFilter(2,2,1) ];
 			touchCtrlBackground.cache(-TOUCH_CTRL_R-10, -TOUCH_CTRL_R-10, TOUCH_CTRL_R*2+20, TOUCH_CTRL_R*2+20);
 			var touchCtrlCur = new createjs.Shape();
-			touchCtrlCur.graphics.f('rgba(255,255,255,1)').dc(0, 0, 24);
-			touchCtrlCur.filters = [ new createjs.BlurFilter(6,6,6) ];
-			touchCtrlCur.cache(-32, -32, 64, 64);
+			touchCtrlCur.graphics.f( controlConfig.ctrlColorDark ? 'rgba(64,64,64,1)' : 'rgba(255,255,255,1)').dc(0, 0, 30);
+			touchCtrlCur.filters = [ new createjs.BlurFilter(6,6,2) ];
+			touchCtrlCur.cache(-38, -38, 76, 76);
 			var touchCtrl = new createjs.Container();
 			touchCtrl.x = TOUCH_CTRL_X;
 			touchCtrl.y = TOUCH_CTRL_Y;
@@ -1287,6 +1366,31 @@ var startLevel = function(level){
 					userCtrl.relY = y;
 				}
 			});
+			// show pause control
+			var pauseCtrlCur = new createjs.Shape();
+			pauseCtrlCur.graphics.setStrokeStyle(6).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.5)');
+			if(controlConfig.ctrlColorDark) pauseCtrlCur.graphics.s('rgba(64,64,64,1)').f('rgba(64,64,64,0.5)');
+			pauseCtrlCur.graphics.dc(0, 0, PAUSE_CTRL_R-3);
+			pauseCtrlCur.graphics.setStrokeStyle(0).f('rgba(255,255,255,1)');
+			if(controlConfig.ctrlColorDark) pauseCtrlCur.graphics.f('rgba(64,64,64,1)');
+			pauseCtrlCur.graphics.r(-6, -6, 12, 12);
+			pauseCtrlCur.filters = [ new createjs.BlurFilter(2,2,1) ];
+			pauseCtrlCur.cache(-PAUSE_CTRL_R-4, -PAUSE_CTRL_R-4, PAUSE_CTRL_R*2+8, PAUSE_CTRL_R*2+8);
+			var pauseCtrl = new createjs.Container();
+			pauseCtrl.x = PAUSE_CTRL_X;
+			pauseCtrl.y = PAUSE_CTRL_Y;
+			pauseCtrl.alpha = 0.2;
+			pauseCtrl.addChild(pauseCtrlCur);
+			game.stage.addChild(pauseCtrl);
+			// pause events
+			game.stage.addTouchArea(PAUSE_CTRL_X-PAUSE_CTRL_R, PAUSE_CTRL_Y-PAUSE_CTRL_R, PAUSE_CTRL_R*2, PAUSE_CTRL_R*2, function(type, stageX, stageY){
+				if(type === 'end') {
+					pause();
+					return;
+				}
+			});
+		}
+		if(MOBILE && level > 1 && !controlConfig.noRun && !controlConfig.mustRun) {
 			// show action control
 			var actionCtrlCur = new createjs.Shape();
 			actionCtrlCur.graphics.setStrokeStyle(6).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.5)').dc(0, 0, ACTION_CTRL_R-3);
@@ -1298,7 +1402,7 @@ var startLevel = function(level){
 			actionCtrl.alpha = 0.2;
 			actionCtrl.addChild(actionCtrlCur);
 			game.stage.addChild(actionCtrl);
-			// direction events
+			// action events
 			game.stage.addTouchArea(ACTION_CTRL_X-ACTION_CTRL_R, ACTION_CTRL_Y-ACTION_CTRL_R, ACTION_CTRL_R*2, ACTION_CTRL_R*2, function(type, stageX, stageY){
 				if(type === 'end') {
 					userCtrl.action = false;
@@ -1356,6 +1460,13 @@ game.started = false;
 game.start = function(){
 	if(game.started) return;
 	game.started = true;
+
+	// set location hash
+	if(location.href !== '#game') location.href = '#game';
+	window.onhashchange = function(e){
+		e.preventDefault();
+		if(location.hash !== '#game') pause();
+	};
 
 	// update volume
 	var updateVolume = function(){

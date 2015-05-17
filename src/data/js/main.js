@@ -36,7 +36,7 @@ game.saveSettings = function(){
 
 game.createTextButton = function(text, fontSize, background, centerX, centerY, clickFunc){
 	var button = new createjs.Container();
-	var t1 = new createjs.Text(text, fontSize+'px'+game.lang.titleFont, MOBILE ? '#ccc' : '#888');
+	var t1 = new createjs.Text(text, fontSize+'px'+game.lang.titleFont, MOBILE ? '#aaa' : '#888');
 	var t2 = new createjs.Text(text, fontSize+'px'+game.lang.titleFont, '#00d2ff');
 	var bg = new createjs.Shape();
 	var width = t1.getMeasuredWidth() + 5;
@@ -91,6 +91,9 @@ game.createTextButton = function(text, fontSize, background, centerX, centerY, c
 
 game.showCover = function(){
 	var res = initResource;
+
+	// handling hash
+	if(location.hash === '#game') history.go(-1);
 
 	//init
 	createjs.Ticker.setFPS(FPS);
@@ -431,6 +434,7 @@ game.showCover = function(){
 		// show start button
 		fontSize = MOBILE ? 36 : 20;
 		fontX = MOBILE ? WIDTH/3 : WIDTH/2;
+		fontY = MOBILE ? 350 : 330;
 		if(game.settings.curLevel)
 			var t = game.str[17];
 		else
@@ -439,7 +443,7 @@ game.showCover = function(){
 			// save settings
 			game.saveSettings();
 			// remove key bindings
-			fullScreenOn(); // TODO
+			if(MOBILE) fullScreenOn();
 			window.removeEventListener('keyup', coverKeyFunc);
 			// fade-out everything
 			var b = new createjs.Shape();
@@ -467,7 +471,7 @@ game.showCover = function(){
 		startButton.addEventListener('mouseout', function(){
 			hint.hide();
 		});
-		startButton.applyMobileEvents();
+		if(MOBILE) startButton.applyMobileEvents();
 		// button animation
 		langLink.alpha = 0;
 		difficultyButton[0].alpha = 0;
@@ -623,9 +627,18 @@ var startResizeWrapper = function(){
 		var r = document.documentElement.clientHeight / HEIGHT;
 		var t = document.documentElement.clientWidth / WIDTH;
 		if(r > t) r = t;
-		if(r >= 1 && !MOBILE) {
+		if(r >= 1) {
 			mainCanvas.style.width = WIDTH + 'px';
 			mainCanvas.style.height = HEIGHT + 'px';
+			mainCanvas.width = Math.floor(WIDTH);
+			mainCanvas.height = Math.floor(HEIGHT);
+			game.stage.scaleX = 1;
+			game.stage.scaleY = 1;
+			if(MOBILE) {
+				mainCanvas.style.width = WIDTH*r + 'px';
+				mainCanvas.style.height = HEIGHT*r + 'px';
+				game.stage.touchScale = r;
+			}
 		} else {
 			mainCanvas.style.width = 'auto';
 			mainCanvas.style.height = 'auto';
@@ -633,6 +646,7 @@ var startResizeWrapper = function(){
 			mainCanvas.height = Math.floor(HEIGHT*r);
 			game.stage.scaleX = r;
 			game.stage.scaleY = r;
+			game.stage.touchScale = r;
 		}
 		game.stage.offsetX = mainCanvas.offsetLeft;
 		game.stage.offsetY = mainCanvas.offsetTop;
@@ -709,6 +723,7 @@ document.bindReady(function(){
 	window.addEventListener('blur', function(){
 		game.focused = false;
 	}, false);
+	location.replace('#');
 
 	// hacks on new version of createjs
 	createjs.BitmapAnimation = createjs.Sprite;
@@ -746,8 +761,15 @@ document.bindReady(function(){
 	// init touch system
 	if(MOBILE) {
 		var touchAreas = [];
+		var touchAreas2 = [];
 		game.stage.removeTouchAreas = function(){
 			touchAreas = [];
+			touchAreas2 = [];
+		};
+		game.stage.alterTouchAreas = function(){
+			var t = touchAreas;
+			touchAreas = touchAreas2;
+			touchAreas2 = t;
 		};
 		game.stage.addTouchArea = function(x, y, w, h, cb){
 			touchAreas.push({
@@ -766,8 +788,8 @@ document.bindReady(function(){
 			for(var i=0; i<touchAreas.length; i++) {
 				var area = touchAreas[i];
 				for(var j=0; j<touches.length; j++) {
-					var x = (touches[j].pageX - game.stage.offsetX) / game.stage.scaleX;
-					var y = (touches[j].pageY - game.stage.offsetY) / game.stage.scaleY;
+					var x = (touches[j].pageX - game.stage.offsetX) / game.stage.touchScale;
+					var y = (touches[j].pageY - game.stage.offsetY) / game.stage.touchScale;
 					if(area.x1 > x || area.x2 < x) continue;
 					if(area.y1 > y || area.y2 < y) continue;
 					if(e.type === 'touchend' || e.type === 'touchcancel' || e.type === 'touchleave') {
@@ -792,6 +814,10 @@ document.bindReady(function(){
 		game.stage.canvas.addEventListener('touchend', touchStartFunc);
 		game.stage.canvas.addEventListener('touchcancel', touchStartFunc);
 		game.stage.canvas.addEventListener('touchleave', touchStartFunc);
+	} else {
+		game.stage.addTouchArea = function(){};
+		game.stage.alterTouchAreas = function(){};
+		game.stage.removeTouchAreas = function(){};
 	}
 
 	// load title resource
