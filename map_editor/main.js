@@ -8,10 +8,9 @@ $(function(){
 	});
 
 	// map: 2D Array
-	var map = window.map = new Uint8Array(90*160);
+	var map = new Uint8Array(90*160);
 
 	// inputs
-	var $blur = $('#blur');
 	var $startX = $('#start_x');
 	var $startY = $('#start_y');
 	var $endX = $('#end_x');
@@ -22,40 +21,16 @@ $(function(){
 	var updateCanvas = function(){
 		var context = $('#canvas')[0].getContext('2d');
 		context.lineWidth = 0;
-		// fill as wall
-		context.fillStyle = "#888";
-		context.fillRect(0, 0, 960, 540);
 		// standard
-		var blur = Number($blur.val());
 		for(var i=0; i<90; i++)
 			for(var j=0; j<160; j++) {
 				if(map[i*160+j])
-					context.fillStyle = '#000';
-				else {
-					// fill according to blur depth
-					if(blur === 0)
-						context.fillStyle = "rgba(0,0,0,0)";
-					else if(blur === 1) {
-						var sum = 0;
-						for(var di=-1; di<=1; di++)
-							for(var dj=-1; dj<=1; dj++) {
-								if(i+di<0 || i+di>=90 || j+dj<0 || j+dj>=160) continue;
-								if(map[(i+di)*160+(j+dj)] !== 0) sum++;
-							}
-						context.fillStyle = 'rgba(0,0,0,'+(sum/9)+')';
-					} else if(blur === 2) {
-						var sum = 0;
-						for(var di=-2; di<=2; di++)
-							for(var dj=-2; dj<=2; dj++) {
-								if(i+di<0 || i+di>=90 || j+dj<0 || j+dj>=160) continue;
-								if(map[(i+di)*160+(j+dj)] !== 0) sum++;
-							}
-						context.fillStyle = 'rgba(0,0,0,'+(sum/25)+')';
-					}
-				}
+					context.fillStyle = "#000";
+				else
+					context.fillStyle = "#888";
 				context.fillRect(j*6, i*6, 6, 6);
 			}
-		// extra points
+		// extra
 		if(!$('#show_extra')[0].checked) return;
 		context.beginPath();
 		context.fillStyle = "blue";
@@ -65,7 +40,7 @@ $(function(){
 		var endY = $endY.val().split(' ');
 		for(var i=0; i<endX.length; i++) {
 			context.beginPath();
-			context.fillStyle = 'rgba(0,255,0,' + (0.9-(endX.length-i)*0.2) + ')';
+			context.fillStyle = "green";
 			context.arc(endX[i]*6, endY[i]*6, 24, 0, Math.PI*2);
 			context.fill();
 		}
@@ -214,7 +189,7 @@ $(function(){
 
 	// update canvas
 	updateCanvas();
-	$('input,select').change(function(){
+	$('input').change(function(){
 		updateCanvas();
 	});
 
@@ -230,7 +205,7 @@ $(function(){
 		}
 		code += '|';
 		code += $startX.val()+'|' + $startY.val()+'|' + $endX.val()+'|' + $endY.val()+'|';
-		code += $lights.val()+'|' + $blur.val();
+		code += $lights.val();
 		$('#code').val(code);
 	});
 
@@ -244,7 +219,6 @@ $(function(){
 			$endX.val(a[3]);
 			$endY.val(a[4]);
 			$lights.val(a[5]);
-			$blur.val(a[6]);
 			// uncompress map
 			for(var i=0; i<90*160/6; i++) {
 				var t = a[0].charCodeAt(i) - 48;
