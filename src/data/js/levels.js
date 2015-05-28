@@ -14,7 +14,7 @@ var ME_HP_MAX = [5000,2000,1000,700];
 var LIGHTS_SPEED = [2,2.5,3,3.5];
 var P_STATE_CHANGE = [0.02, 0.025, 0.03, 0.035];
 var ME_MOVE_SPEED = 3; // no larger than 6
-var ME_SLOW_RATE = 0.75;  // slow_speed = slow_rate * normal_speed
+var ME_SLOW_RATE = 0.65;  // slow_speed = slow_rate * normal_speed
 var ME_S_R = 12;          // radius of my shadow
 var ME_S_DES_PER_FRAME = 0.003;
 var ME_S_START_ALPHA = 0.096;   // alpha when the shadow appear
