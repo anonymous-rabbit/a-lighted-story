@@ -1,63 +1,73 @@
 <!DOCTYPE html>
 <html>
-<head>
-	<meta charset="UTF-8">
-	<title>A Lighted Story</title>
-	<style>
-		body {
-			margin: 40px auto;
-			width: 800px;
-			background: black;
-			font: 'sans-serif';
-		}
-		hr {
-			border: 0 none;
-			padding: 0;
-			margin: 0 0 40px;
-			border-top: 3px solid #808080;
-		}
-		img {
-			margin: 0 50px 20px;
-		}
-		p {
-			color: #c0c0c0;
-			text-align: center;
-			margin: 20px 0;
-			font-size: 18px;
-		}
-		#enter {
-			cursor: pointer;
-		}
-		#enter:hover {
-			color: #00d2ff;
-		}
-	</style>
-</head>
-<body>
-	<div id="wrapper">
-		<img src="src/data/image/title_en.png">
-		<hr>
-		<p id="hint"><noscript>Please enable JavaScript support of your browser.</noscript></p>
-		<p><span id="enter"></span></p>
-	</div>
-	<script type="text/javascript">
-		// detect mobile devices
-		if('ontouchstart' in document.documentElement) {
-			var hint = document.getElementById('hint');
-			var enter = document.getElementById('enter');
-			if(navigator.language === 'zh-CN' || navigator.userLanguage === 'zh-CN') {
-				hint.innerHTML = '这个游戏需要PC键盘，并将自动下载几MB的数据';
-				enter.innerHTML = '进入游戏 &gt;';
-			} else {
-				hint.innerHTML = 'This game requires a PC keyboard. Several MBs of data will be auto downloaded.';
-				enter.innerHTML = 'Enter Game &gt;';
+	<head>
+		<meta charset="UTF-8">
+		<title>A Lighted Story</title>
+		<style>
+			body {
+				margin: 40px auto;
+				max-width: 800px;
+				background: black;
+				font: 'sans-serif';
 			}
-			enter.onclick = function(){
-				location.href = 'src/index.html';
-			};
-		} else {
-			location.href = 'src/index.html';
-		}
-	</script>
-</body>
+			hr {
+				border: 0 none;
+				padding: 0;
+				margin: 0 0 40px;
+				border-top: 3px solid #808080;
+			}
+			img {
+				display: block;
+				margin: 0 auto 20px;
+				width: 700px;
+				max-width: 100%;
+			}
+			body {
+				color: #bbb;
+				font-size: 1.2em;
+			}
+			p {
+				margin: 1em auto;
+				width: 90%;
+				max-width: 600px;
+			}
+			a {
+				color: #fff;
+			}
+		</style>
+	</head>
+	<body>
+		<noscript><div class="wrapper" id="wrapper_noscript">
+			<img src="src/data/image/title_en.png" alt="">
+			<hr>
+			<p>Please enable JavaScript support of your browser.</p>
+		</div></noscript>
+		<div class="wrapper" id="wrapper_en" style="display:none">
+			<img src="src/data/image/title_en.png" alt="">
+			<hr>
+			<p>This game requires PC or large screen mobile devices. Several MBs of data will be auto downloaded.</p>
+			<div class="links">
+				<p><a href="src/index.html#desktop">PC Version</a> - better effects, need keyboard</p>
+				<p><a href="src/index.html#mobile">Mobile Version</a> - for touch devices</p>
+				<p>Android App - <a href="ALightedStory_arm.apk">arm devices</a>, <a href="ALightedStory_x86.apk">x86 devices</a></p>
+			</div>
+		</div>
+		<div class="wrapper" id="wrapper_zh-CN" style="display:none">
+			<img src="src/data/image/title_zh-CN.png" alt="">
+			<hr>
+			<p>这个游戏支持电脑或大屏幕移动设备。游戏将自动下载几MB的数据。</p>
+			<div class="links">
+				<p><a href="src/index.html#desktop">电脑版</a> - 效果更好，使用键盘操作</p>
+				<p><a href="src/index.html#mobile">移动版</a> - 支持触屏设备</p>
+				<p>Android App - <a href="ALightedStory_arm.apk">arm版</a>，<a href="ALightedStory_x86.apk">x86版</a></p>
+			</div>
+		</div>
+		<script type="text/javascript">
+			if(navigator.language === 'zh-CN' || navigator.userLanguage === 'zh-CN') {
+				document.getElementById('wrapper_zh-CN').style.display = 'block';
+			} else {
+				document.getElementById('wrapper_en').style.display = 'block';
+			}
+		</script>
+	</body>
 </html>
