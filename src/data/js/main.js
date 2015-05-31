@@ -3,7 +3,7 @@
 
 // consts
 
-var FPS = 32;
+var FPS = 30;
 var WIDTH = 960;
 var HEIGHT = 540;
 var USE_ADVANCED_LOADING = false;
@@ -36,7 +36,7 @@ game.saveSettings = function(){
 
 game.createTextButton = function(text, fontSize, background, centerX, centerY, clickFunc){
 	var button = new createjs.Container();
-	var t1 = new createjs.Text(text, fontSize+'px'+game.lang.titleFont, '#888');
+	var t1 = new createjs.Text(text, fontSize+'px'+game.lang.titleFont, MOBILE ? '#aaa' : '#888');
 	var t2 = new createjs.Text(text, fontSize+'px'+game.lang.titleFont, '#00d2ff');
 	var bg = new createjs.Shape();
 	var width = t1.getMeasuredWidth() + 5;
@@ -52,15 +52,38 @@ game.createTextButton = function(text, fontSize, background, centerX, centerY, c
 	t2.visible = false;
 	button.x = centerX;
 	button.y = centerY;
-	button.addEventListener('mouseover', function(){
-		t2.visible = true;
-		t1.visible = false;
-	});
-	button.addEventListener('mouseout', function(){
-		t1.visible = true;
-		t2.visible = false;
-	});
-	button.addEventListener('click', clickFunc);
+	if(MOBILE) {
+		// provide highlight methods in mobile mode
+		button.highLight = function(h){
+			if(h) {
+				t2.visible = true;
+				t1.visible = false;
+			} else {
+				t1.visible = true;
+				t2.visible = false;
+			}
+		};
+		button.applyMobileEvents = function(func){
+			game.stage.addTouchArea(button.x-width/2, button.y-height/2, width, height, function(type){
+				if(type === 'start') {
+					button.highLight(true);
+					(func || clickFunc)();
+				} else if(type === 'end') {
+					button.highLight(false);
+				}
+			});
+		};
+	} else {
+		button.addEventListener('mouseover', function(){
+			t2.visible = true;
+			t1.visible = false;
+		});
+		button.addEventListener('mouseout', function(){
+			t1.visible = true;
+			t2.visible = false;
+		});
+		button.addEventListener('click', clickFunc);
+	}
 	return button;
 };
 
@@ -69,15 +92,18 @@ game.createTextButton = function(text, fontSize, background, centerX, centerY, c
 game.showCover = function(){
 	var res = initResource;
 
+	// handling hash
+	if(location.hash === '#game') history.go(-1);
+
 	//init
 	createjs.Ticker.setFPS(FPS);
-	game.stage.enableMouseOver(FPS);
+	if(MOBILE) {
+		game.stage.enableMouseOver(0);
+	} else {
+		game.stage.enableMouseOver(FPS);
+	}
 
-	// show author logo
-	var bottomBar = new createjs.Container();
-	bottomBar.x = WIDTH/2;
-	bottomBar.y = HEIGHT-30;
-	game.stage.addChild(bottomBar);
+	// create author logo
 	var lastleafLink = new createjs.Container();
 	var bg = new createjs.Shape();
 	bg.graphics.s('black').f('black').r(-5,-5,154,58);
@@ -89,8 +115,13 @@ game.showCover = function(){
 	lastleafLink.getChildAt(2).visible = false;
 	lastleafLink.x = 280;
 	lastleafLink.y = -16;
-	lastleafLink.scaleX = 0.6;
-	lastleafLink.scaleY = 0.6;
+	if(!MOBILE) {
+		lastleafLink.scaleX = 0.6;
+		lastleafLink.scaleY = 0.6;
+	} else {
+		lastleafLink.scaleX = 0.8;
+		lastleafLink.scaleY = 0.8;
+	}
 	lastleafLink.addEventListener('mouseover', function(){
 		lastleafLink.getChildAt(2).visible = true;
 		lastleafLink.getChildAt(1).visible = false;
@@ -99,44 +130,76 @@ game.showCover = function(){
 		lastleafLink.getChildAt(1).visible = true;
 		lastleafLink.getChildAt(2).visible = false;
 	});
-	lastleafLink.addEventListener('click', function(){
-		if(location.protocol !== 'resource:')
-			window.open('http://lastleaf.me/');
-	});
-	bottomBar.addChild(lastleafLink);
+	if(!MOBILE) {
+		lastleafLink.addEventListener('click', function(){
+			if(location.protocol !== 'resource:')
+				window.open('http://lastleaf.me/');
+		});
+	}
 
-	// show license link
-	var licenseLink = game.createTextButton(game.str[3], 16, '#000', -320, 0, function(){
+	// create license link
+	var licenseLink = game.createTextButton(game.str[3], MOBILE ? 24 : 16, '#000', -320, 0, function(){
 		if(location.protocol !== 'resource:')
 			window.open('license_'+game.settings.lang+'.html');
 		else
 			location.href = 'license_'+game.settings.lang+'.html?showback';
 	});
-	bottomBar.addChild(licenseLink);
 
-	// show about link
-	var aboutLink = game.createTextButton('CREDIT', 16, '#000', -200, 0, function(){
+	// create about link
+	var aboutLink = game.createTextButton('CREDIT', MOBILE ? 24 : 16, '#000', -200, 0, function(){
 		if(location.protocol !== 'resource:')
 			window.open('credit.html');
 		else
 			location.href = 'credit.html?showback';
 	});
-	bottomBar.addChild(aboutLink);
 
-	// show github link
-	if(location.protocol !== 'resource:') {
-		var aboutLink = game.createTextButton('GitHub', 16, '#000', -80, 0, function(){
-			window.open('https://github.com/MistyMiracle/a-lighted-story');
-		});
-		bottomBar.addChild(aboutLink);
-	}
+	// create github link
+	var githubLink = game.createTextButton('GitHub', MOBILE ? 24 : 16, '#000', -80, 0, function(){
+		window.open('https://github.com/MistyMiracle/a-lighted-story');
+	});
 
 	// show subtitle
-	var subtitle = game.createTextButton(game.str[4], 16, '#000', 160, 0, function(){
+	var subtitle = game.createTextButton(game.str[4], MOBILE ? 24 : 16, '#000', 160, 0, function(){
 		if(location.protocol !== 'resource:')
 			window.open('http://github.com/LastLeaf/Tomorrow');
 	});
-	bottomBar.addChild(subtitle);
+
+	if(MOBILE) {
+		lastleafLink.x = 770;
+		lastleafLink.y = HEIGHT-62;
+		game.stage.addChild(lastleafLink);
+		subtitle.x = 600;
+		subtitle.y = HEIGHT-40;
+		game.stage.addChild(subtitle);
+		licenseLink.x = 120;
+		licenseLink.y = HEIGHT-40;
+		game.stage.addChild(licenseLink);
+		aboutLink.x = 240;
+		aboutLink.y = HEIGHT-40;
+		game.stage.addChild(aboutLink);
+		githubLink.x = 360;
+		githubLink.y = HEIGHT-40;
+		game.stage.addChild(githubLink);
+		game.stage.addTouchArea(lastleafLink.x, lastleafLink.y, 154*0.8, 58*0.8, function(type){
+			if(type === 'start') window.open('http://lastleaf.me/');
+		});
+		subtitle.applyMobileEvents();
+		licenseLink.applyMobileEvents();
+		aboutLink.applyMobileEvents();
+		githubLink.applyMobileEvents();
+	} else {
+		var bottomBar = new createjs.Container();
+		bottomBar.x = WIDTH/2;
+		bottomBar.y = HEIGHT-30;
+		game.stage.addChild(bottomBar);
+		bottomBar.addChild(lastleafLink);
+		bottomBar.addChild(licenseLink);
+		bottomBar.addChild(aboutLink);
+		if(location.protocol !== 'resource:') {
+			bottomBar.addChild(githubLink);
+		}
+		bottomBar.addChild(subtitle);
+	}
 
 	// show title
 	document.title = 'A Lighted Story';
@@ -153,7 +216,7 @@ game.showCover = function(){
 	var progressShape = new createjs.Shape();
 	var progress = progressShape.graphics;
 	progress.f('#888').r(0, 0, 0, 3);
-	var progressText = new createjs.Text(game.str[5], '20px'+game.lang.titleFont, '#888');
+	var progressText = new createjs.Text(game.str[5], (MOBILE ? '32px' : '20px')+game.lang.titleFont, '#888');
 	progressText.textAlign = 'center';
 	progressText.textBaseline = 'middle';
 	progressText.x = 400;
@@ -168,6 +231,9 @@ game.showCover = function(){
 	progressBar.x = (WIDTH-800) / 2;
 	progressBar.y = 277;
 	progressBar.isAlphaUp = false;
+	createjs.Ticker.addEventListener('tick', function(){
+		game.stage.dirtyRect(0, 310, 960, 350);
+	});
 
 	// animation
 	var centeredMoving = function(cur, center, radius, acc){
@@ -214,38 +280,54 @@ game.showCover = function(){
 			createjs.Ticker.removeAllEventListeners('tick');
 			window.removeEventListener('keyup', coverKeyFunc);
 			game.stage.removeAllChildren();
+			game.stage.removeTouchAreas();
 			game.mainResource = null;
 			game.showCover();
 		};
-		if(game.settings.lang === 'zh-CN')
-			var langLink = game.createTextButton('English', 20, '#000', WIDTH/2, 450, function(){
-				switchLang('en');
-			});
-		else
-			var langLink = game.createTextButton('简体中文', 20, '#000', WIDTH/2, 450, function(){
-				switchLang('zh-CN');
-			});
+		if(MOBILE) {
+			if(game.settings.lang === 'zh-CN')
+				var langLink = game.createTextButton('English', 30, '#000', WIDTH/3, 410, function(){
+					switchLang('en');
+				});
+			else
+				var langLink = game.createTextButton('简体中文', 30, '#000', WIDTH/3, 410, function(){
+					switchLang('zh-CN');
+				});
+			langLink.applyMobileEvents();
+		} else {
+			if(game.settings.lang === 'zh-CN')
+				var langLink = game.createTextButton('English', 20, '#000', WIDTH/2, 450, function(){
+					switchLang('en');
+				});
+			else
+				var langLink = game.createTextButton('简体中文', 20, '#000', WIDTH/2, 450, function(){
+					switchLang('zh-CN');
+				});
+		}
 		// show difficulty button
+		var fontSize = MOBILE ? 32 : 20;
+		var fontX = MOBILE ? WIDTH*2/3 : WIDTH/2;
+		var fontY = 410;
 		var difficultyButton = [
-			game.createTextButton(game.str[6], 20, '#000', WIDTH/2, 410, function(){
+			game.createTextButton(game.str[6], fontSize, '#000', fontX, 410, function(){
 				difficultyButton[0].visible = false;
 				difficultyButton[1].visible = true;
 				game.settings.difficulty = 1;
 				difficultyButton[1].dispatchEvent('mouseover');
 			}),
-			game.createTextButton(game.str[7], 20, '#000', WIDTH/2, 410, function(){
+			game.createTextButton(game.str[7], fontSize, '#000', fontX, 410, function(){
 				difficultyButton[1].visible = false;
 				difficultyButton[2].visible = true;
 				game.settings.difficulty = 2;
 				difficultyButton[2].dispatchEvent('mouseover');
 			}),
-			game.createTextButton(game.str[8], 20, '#000', WIDTH/2, 410, function(){
+			game.createTextButton(game.str[8], fontSize, '#000', fontX, 410, function(){
 				difficultyButton[2].visible = false;
 				difficultyButton[3].visible = true;
 				game.settings.difficulty = 3;
 				difficultyButton[3].dispatchEvent('mouseover');
 			}),
-			game.createTextButton(game.str[9], 20, '#000', WIDTH/2, 410, function(){
+			game.createTextButton(game.str[9], fontSize, '#000', fontX, 410, function(){
 				difficultyButton[3].visible = false;
 				difficultyButton[0].visible = true;
 				game.settings.difficulty = 0;
@@ -269,14 +351,49 @@ game.showCover = function(){
 		difficultyButton[2].set({visible: false}).addEventListener('mouseout', hint.hide);
 		difficultyButton[3].set({visible: false}).addEventListener('mouseout', hint.hide);
 		difficultyButton[game.settings.difficulty].visible = true;
+		if(MOBILE) {
+			difficultyButton[0].applyMobileEvents(function(){
+				if(game.settings.difficulty !== 0) return;
+				setTimeout(function(){
+					game.settings.difficulty = 1;
+					difficultyButton[0].visible = false;
+					difficultyButton[1].visible = true;
+				}, 250);
+			});
+			difficultyButton[1].applyMobileEvents(function(){
+				if(game.settings.difficulty !== 1) return;
+				setTimeout(function(){
+					game.settings.difficulty = 2;
+					difficultyButton[1].visible = false;
+					difficultyButton[2].visible = true;
+				}, 250);
+			});
+			difficultyButton[2].applyMobileEvents(function(){
+				if(game.settings.difficulty !== 2) return;
+				setTimeout(function(){
+					game.settings.difficulty = 3;
+					difficultyButton[2].visible = false;
+					difficultyButton[3].visible = true;
+				}, 250);
+			});
+			difficultyButton[3].applyMobileEvents(function(){
+				if(game.settings.difficulty !== 3) return;
+				setTimeout(function(){
+					game.settings.difficulty = 0;
+					difficultyButton[3].visible = false;
+					difficultyButton[0].visible = true;
+				}, 250);
+			});
+		}
 		// show music button
-		var musicButtonOn = game.createTextButton(game.str[14], 20, '#000', WIDTH/2, 370, function(){
+		fontY = MOBILE ? 350 : 370;
+		var musicButtonOn = game.createTextButton(game.str[14], fontSize, '#000', fontX, fontY, function(){
 			musicButtonOn.visible = false;
 			musicButtonOff.visible = true;
 			game.settings.musicOn = false;
 			musicButtonOff.dispatchEvent('mouseover');
 		});
-		var musicButtonOff = game.createTextButton(game.str[15], 20, '#000', WIDTH/2, 370, function(){
+		var musicButtonOff = game.createTextButton(game.str[15], fontSize, '#000', fontX, fontY, function(){
 			musicButtonOff.visible = false;
 			musicButtonOn.visible = true;
 			game.settings.musicOn = true;
@@ -296,15 +413,37 @@ game.showCover = function(){
 			musicButtonOn.visible = false;
 			musicButtonOff.visible = true;
 		}
+		if(MOBILE) {
+			musicButtonOn.applyMobileEvents(function(){
+				if(!game.settings.musicOn) return;
+				setTimeout(function(){
+					game.settings.musicOn = false;
+					musicButtonOn.visible = false;
+					musicButtonOff.visible = true;
+				}, 250);
+			});
+			musicButtonOff.applyMobileEvents(function(){
+				if(game.settings.musicOn) return;
+				setTimeout(function(){
+					game.settings.musicOn = true;
+					musicButtonOff.visible = false;
+					musicButtonOn.visible = true;
+				}, 250);
+			});
+		}
 		// show start button
+		fontSize = MOBILE ? 36 : 20;
+		fontX = MOBILE ? WIDTH/3 : WIDTH/2;
+		fontY = MOBILE ? 350 : 330;
 		if(game.settings.curLevel)
 			var t = game.str[17];
 		else
 			var t = game.str[18];
-		var startButton = game.createTextButton(t, 20, '#000', WIDTH/2, 330, function(){
+		var startButton = game.createTextButton(t, fontSize, '#000', fontX, fontY, function(){
 			// save settings
 			game.saveSettings();
 			// remove key bindings
+			if(MOBILE) fullScreenOn();
 			window.removeEventListener('keyup', coverKeyFunc);
 			// fade-out everything
 			var b = new createjs.Shape();
@@ -315,6 +454,7 @@ game.showCover = function(){
 				if(b.alpha >= 1) {
 					createjs.Ticker.removeAllEventListeners('tick');
 					game.stage.removeAllChildren();
+					game.stage.removeTouchAreas();
 					game.stage.update();
 					hint.hide();
 					game.start();
@@ -331,6 +471,7 @@ game.showCover = function(){
 		startButton.addEventListener('mouseout', function(){
 			hint.hide();
 		});
+		if(MOBILE) startButton.applyMobileEvents();
 		// button animation
 		langLink.alpha = 0;
 		difficultyButton[0].alpha = 0;
@@ -386,6 +527,7 @@ game.showCover = function(){
 					delete localStorage[STORAGE_ID];
 					game.settings = DEFAULT_SETTINGS;
 					game.stage.removeAllChildren();
+					game.stage.removeTouchAreas();
 					createjs.Ticker.removeAllEventListeners('tick');
 					window.removeEventListener('keyup', coverKeyFunc);
 					game.showCover();
@@ -413,12 +555,12 @@ game.showCover = function(){
 				{id:'maps', type:'text', src:'maps.data?v='+VERSION},
 				{id:'ctrl', src:'ctrl.json?v='+VERSION},
 				{id:'words', src:'words_'+game.settings.lang+'.json?v='+VERSION},
-				{id:'bgm1', src:'audio/the_start_of_night.ogg|audio/the_start_of_night.mp3'},
-				{id:'bgm2', src:'audio/lighted_stories.ogg|audio/lighted_stories.mp3'},
-				{id:'bgm3', src:'audio/tomorrow.ogg|audio/tomorrow.mp3'},
-				{id:'bgm4', src:'audio/spreading_white.ogg|audio/spreading_white.mp3'},
-				{id:'bgm5', src:'audio/lighted_stories_strings.ogg|audio/lighted_stories_strings.mp3'},
-				{id:'bgm0', src:'audio/tomorrow_short.ogg|audio/tomorrow_short.mp3'},
+				{id:'bgm1', src:'audio/the_start_of_night.ogg'},
+				{id:'bgm2', src:'audio/lighted_stories.ogg'},
+				{id:'bgm3', src:'audio/tomorrow.ogg'},
+				{id:'bgm4', src:'audio/spreading_white.ogg'},
+				{id:'bgm5', src:'audio/lighted_stories_strings.ogg'},
+				{id:'bgm0', src:'audio/tomorrow_short.ogg'},
 				{id:'tomorrow', src:'image/title_'+game.settings.lang+'.png'},
 				{id:'img6', src:'image/6.png'},
 				{id:'img7', src:'image/7.png'},
@@ -454,12 +596,12 @@ game.showCover = function(){
 			xhr3.send();
 			// load else
 			q.loadManifest([
-				{id:'bgm1', src:'audio/the_start_of_night.ogg|audio/the_start_of_night.mp3'},
-				{id:'bgm2', src:'audio/lighted_stories.ogg|audio/lighted_stories.mp3'},
-				{id:'bgm3', src:'audio/tomorrow.ogg|audio/tomorrow.mp3'},
-				{id:'bgm4', src:'audio/spreading_white.ogg|audio/spreading_white.mp3'},
-				{id:'bgm5', src:'audio/lighted_stories_strings.ogg|audio/lighted_stories_strings.mp3'},
-				{id:'bgm0', src:'audio/tomorrow_short.ogg|audio/tomorrow_short.mp3'},
+				{id:'bgm1', src:'audio/the_start_of_night.ogg'},
+				{id:'bgm2', src:'audio/lighted_stories.ogg'},
+				{id:'bgm3', src:'audio/tomorrow.ogg'},
+				{id:'bgm4', src:'audio/spreading_white.ogg'},
+				{id:'bgm5', src:'audio/lighted_stories_strings.ogg'},
+				{id:'bgm0', src:'audio/tomorrow_short.ogg'},
 				{id:'tomorrow', src:'image/title_'+game.settings.lang+'.png'},
 				{id:'img6', src:'image/6.png'},
 				{id:'img7', src:'image/7.png'},
@@ -482,19 +624,35 @@ var startResizeWrapper = function(){
 	var mainCanvas = document.getElementById('main_canvas');
 	var resizeWrapper = function(){
 		wrapper.style.height = document.documentElement.clientHeight + 'px';
-		var r = 1;
-		if(document.documentElement.clientHeight < HEIGHT)
-			var r = document.documentElement.clientHeight / HEIGHT;
-		if(document.documentElement.clientWidth < WIDTH) {
-			var t = document.documentElement.clientWidth / WIDTH;
-			if(r > t) r = t;
-		}
+		var r = document.documentElement.clientHeight / HEIGHT;
+		var t = document.documentElement.clientWidth / WIDTH;
+		if(r > t) r = t;
 		if(r >= 1) {
 			mainCanvas.style.width = WIDTH + 'px';
 			mainCanvas.style.height = HEIGHT + 'px';
+			mainCanvas.width = Math.floor(WIDTH);
+			mainCanvas.height = Math.floor(HEIGHT);
+			game.stage.scaleX = 1;
+			game.stage.scaleY = 1;
+			if(MOBILE) {
+				mainCanvas.style.width = WIDTH*r + 'px';
+				mainCanvas.style.height = HEIGHT*r + 'px';
+				game.stage.touchScale = r;
+			}
 		} else {
-			mainCanvas.style.width = Math.round(WIDTH*r) + 'px';
-			mainCanvas.style.height = Math.round(HEIGHT*r) + 'px';
+			mainCanvas.style.width = 'auto';
+			mainCanvas.style.height = 'auto';
+			mainCanvas.width = Math.floor(WIDTH*r);
+			mainCanvas.height = Math.floor(HEIGHT*r);
+			game.stage.scaleX = r;
+			game.stage.scaleY = r;
+			game.stage.touchScale = r;
+		}
+		game.stage.offsetX = mainCanvas.offsetLeft;
+		game.stage.offsetY = mainCanvas.offsetTop;
+		if(game.stage.dirtyRect) {
+			game.stage.dirtyRect(0, 0, WIDTH, HEIGHT);
+			game.stage.update();
 		}
 	};
 	window.onresize = resizeWrapper;
@@ -549,6 +707,15 @@ document.bindReady(function(){
 		return;
 	}
 
+	// fullscreen for mobile
+	if(MOBILE) {
+		var wrapper = document.getElementById('wrapper')
+		wrapper.ondblclick = null;
+		wrapper.oncontextmenu = function(e){
+			e.preventDefault();
+		};
+	}
+
 	// window focus status
 	window.addEventListener('focus', function(){
 		game.focused = true;
@@ -556,12 +723,102 @@ document.bindReady(function(){
 	window.addEventListener('blur', function(){
 		game.focused = false;
 	}, false);
+	location.replace('#');
+
+	// hacks on new version of createjs
+	createjs.BitmapAnimation = createjs.Sprite;
 
 	// init canvas
 	document.getElementById('wrapper').innerHTML = '<canvas id="main_canvas" width="'+WIDTH+'" height="'+HEIGHT+'"></canvas>';
-	startResizeWrapper();
 	game.stage = new createjs.Stage('main_canvas');
-	createjs.Sound.registerPlugins([createjs.HTMLAudioPlugin]);
+	startResizeWrapper();
+	game.stage.autoClear = false;
+	createjs.Sound.alternateExtensions = ["mp3"];
+
+	// dirty rect management
+	var dirtyRects = [];
+	game.stage.dirtyRect = function(x, y, width, height){
+		dirtyRects.push([x, y, width, height]);
+	};
+	var stageUpdate = game.stage.update;
+	game.stage.update = function(){
+		var scale = game.stage.scaleX;
+		while(dirtyRects.length) {
+			var rect = dirtyRects.shift();
+			var x = rect[0];
+			var y = rect[1];
+			var width = rect[2];
+			var height = rect[3];
+			var context = game.stage.canvas.getContext('2d');
+			var prev = context.fillStyle;
+			context.fillStyle = '#000';
+			context.fillRect(x*scale, y*scale, width*scale, height*scale);
+			context.fillStyle = prev;
+		}
+		stageUpdate.call(game.stage);
+	};
+
+	// init touch system
+	if(MOBILE) {
+		var touchAreas = [];
+		var touchAreas2 = [];
+		game.stage.removeTouchAreas = function(){
+			touchAreas = [];
+			touchAreas2 = [];
+		};
+		game.stage.alterTouchAreas = function(){
+			var t = touchAreas;
+			touchAreas = touchAreas2;
+			touchAreas2 = t;
+		};
+		game.stage.addTouchArea = function(x, y, w, h, cb){
+			touchAreas.push({
+				x1: x,
+				y1: y,
+				x2: x+w,
+				y2: y+h,
+				cb: cb,
+				started: false
+			});
+		};
+		var touchStartFunc = function(e){
+			e.preventDefault();
+			var touches = e.touches;
+			if(e.type === 'touchend' || e.type === 'touchcancel' || e.type === 'touchleave') touches = e.changedTouches;
+			for(var i=0; i<touchAreas.length; i++) {
+				var area = touchAreas[i];
+				for(var j=0; j<touches.length; j++) {
+					var x = (touches[j].pageX - game.stage.offsetX) / game.stage.touchScale;
+					var y = (touches[j].pageY - game.stage.offsetY) / game.stage.touchScale;
+					if(area.x1 > x || area.x2 < x) continue;
+					if(area.y1 > y || area.y2 < y) continue;
+					if(e.type === 'touchend' || e.type === 'touchcancel' || e.type === 'touchleave') {
+						area.started = false;
+						area.cb('end');
+						break;
+					}
+					if(area.started) area.cb('move', x, y);
+					else area.cb('start', x, y);
+					area.started = true;
+					break;
+				}
+				if(e.type === 'touchend' || e.type === 'touchcancel' || e.type === 'touchleave') continue;
+				if(j === touches.length && area.started) {
+					area.started = false;
+					area.cb('end');
+				}
+			}
+		};
+		game.stage.canvas.addEventListener('touchstart', touchStartFunc);
+		game.stage.canvas.addEventListener('touchmove', touchStartFunc);
+		game.stage.canvas.addEventListener('touchend', touchStartFunc);
+		game.stage.canvas.addEventListener('touchcancel', touchStartFunc);
+		game.stage.canvas.addEventListener('touchleave', touchStartFunc);
+	} else {
+		game.stage.addTouchArea = function(){};
+		game.stage.alterTouchAreas = function(){};
+		game.stage.removeTouchAreas = function(){};
+	}
 
 	// load title resource
 	hint.show(game.str[2]);

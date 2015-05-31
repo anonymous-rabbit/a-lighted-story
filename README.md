@@ -2,7 +2,7 @@
 
 > Dull, gloomy, all the same in those lightless corners. My life had been like that, until......I met her.
 
-This is an action game and interactive fiction. It is forked from [Tomorrow](https://github.com/LastLeaf/Tomorrow/), participating in **GitHub's 2015 Game Off** contest.
+This is an action game and interactive fiction (storytelling game). It is forked from [Tomorrow](https://github.com/LastLeaf/Tomorrow/), participating in **GitHub's 2015 Game Off** contest.
 
 Tomorrow is an open source game published on Kongregate in Sep 2013.
 It was created by one of our team member (LastLeaf).
@@ -22,6 +22,8 @@ We replotted this game to make it better.
 ![](screenshots/0.png)
 ![](screenshots/1.png)
 ![](screenshots/2.png)
+
+There is an game preview (English version, **contains minor spoilers**) on [youtube](https://www.youtube.com/watch?v=zXmWWk_ADGk) and [youku](http://v.youku.com/v_show/id_XOTMyODc2OTY4.html).
 
 # What is Changed #
 

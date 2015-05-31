@@ -13,9 +13,8 @@ var LIGHT_R_MAX = 50*6;
 var ME_HP_MAX = [5000,2000,1000,700];
 var LIGHTS_SPEED = [2,2.5,3,3.5];
 var P_STATE_CHANGE = [0.02, 0.025, 0.03, 0.035];
-var ME_MOVE_SPEED = 3;
-var ME_ACTION_SPEED = 6; // no larger than 6
-var ME_SLOW_RATE = 0.5;  // slow_speed = slow_rate * normal_speed
+var ME_MOVE_SPEED = 3; // no larger than 6
+var ME_SLOW_RATE = 0.65;  // slow_speed = slow_rate * normal_speed
 var ME_S_R = 12;          // radius of my shadow
 var ME_S_DES_PER_FRAME = 0.003;
 var ME_S_START_ALPHA = 0.096;   // alpha when the shadow appear
@@ -26,12 +25,21 @@ var ME_ACTION_DAMAGE = 4;
 var ME_ACTION_DIF = Math.PI/8;
 var ME_DAMAGE_PER_R = 1;
 var STORY_FONT_SIZE = 28;
-var MAP_TEXT_FONT_SIZE = 26;
+var MAP_TEXT_FONT_SIZE = 28;
 var ME_COLOR = '#808080';
 var ME_COLOR_LIGHT = '#F0F9FF';
 var HER_COLOR = '#AD4653';
 var HER_COLOR_LIGHT = '#FFB8C2';
 var HER_COLOR_TEXT = '#FFB8C2';
+var PAUSE_CTRL_R = 30;
+var PAUSE_CTRL_X = WIDTH-PAUSE_CTRL_R-6;
+var PAUSE_CTRL_Y = PAUSE_CTRL_R+6;
+var TOUCH_CTRL_R = 90;
+var TOUCH_CTRL_X = WIDTH-TOUCH_CTRL_R-6;
+var TOUCH_CTRL_Y = HEIGHT-TOUCH_CTRL_R-6;
+var ACTION_CTRL_R = 42;
+var ACTION_CTRL_X = ACTION_CTRL_R+6;
+var ACTION_CTRL_Y = HEIGHT-ACTION_CTRL_R-6;
 
 // parse a map
 
@@ -100,7 +108,7 @@ var parseMap = function(level){
 					g.r((p%160)*6, Math.floor(p/160)*6, 6, 6);
 			}
 		}
-		picture.filters = [ new createjs.BoxBlurFilter(6*blur+2,6*blur+2,1) ];
+		picture.filters = [ new createjs.BlurFilter(6*blur+2,6*blur+2,4) ];
 		picture.cache(0,0,WIDTH,HEIGHT);
 		picture.block = block;
 		pictures.push(picture);
@@ -110,6 +118,7 @@ var parseMap = function(level){
 	// add image above if needed
 	if(game.ctrl[level].bgimage) {
 		var img = new createjs.Bitmap( game.mainResource.getResult('img' + game.ctrl[level].bgimage) );
+		img.cache(0, 0, WIDTH, HEIGHT);
 		map.picture.addChild(img);
 	}
 	map.nextPicture = function(){
@@ -222,14 +231,6 @@ var generatePerson = function(color){
 	return new createjs.BitmapAnimation(ss.build());
 };
 
-var whiteMap = (function(){
-	var b = new createjs.Shape();
-	b.graphics.f('rgb(128,128,128)').r(12,12,WIDTH-24,HEIGHT-24);
-	b.filters = [ new createjs.BoxBlurFilter(12,12,1) ];
-	b.cache(0,0,WIDTH,HEIGHT);
-	return b;
-})();
-
 // user operations
 
 var userCtrlReset = function(){
@@ -238,10 +239,12 @@ var userCtrlReset = function(){
 	userCtrl.skip = false;
 	userCtrl.reset = false;
 	userCtrl.action = false;
-	userCtrl.up = false;
-	userCtrl.down = false;
-	userCtrl.left = false;
-	userCtrl.right = false;
+	userCtrl.up = 0;
+	userCtrl.down = 0;
+	userCtrl.left = 0;
+	userCtrl.right = 0;
+	userCtrl.relX = 0;
+	userCtrl.relY = 0;
 };
 var userCtrl = {
 	animating: false,
@@ -258,10 +261,14 @@ var userCtrl = {
 // pause and unpause
 
 var pause = function(){
+	if(location.hash === '#game') history.go(-1);
 	userCtrl.paused = true;
+	if(MOBILE) fullScreenOff();
 };
 var unpause = function(){
+	if(location.hash !== '#game') history.go(1);
 	userCtrl.paused = false;
+	if(MOBILE) fullScreenOn();
 };
 var startAnimate = function(){
 	userCtrl.animating = true;
@@ -288,8 +295,11 @@ var startLevel = function(level){
 				game.started = false;
 				createjs.Sound.stop();
 				createjs.Ticker.removeAllEventListeners('tick');
+				game.stage.removeTouchAreas();
 				window.removeEventListener('keydown', game.keyDownFunc);
 				window.removeEventListener('keyup', game.keyUpFunc);
+				var wrapper = document.getElementById('wrapper');
+				wrapper.ontouchstart = wrapper.ontouchmove = wrapper.ontouchend = null;
 				game.showCover();
 			}
 		}
@@ -347,7 +357,7 @@ var startLevel = function(level){
 		storyText.textBaseline = 'middle';
 		storyText.x = WIDTH/2;
 		storyText.y = HEIGHT/2;
-		storyText.filters = [ new createjs.BoxBlurFilter(1,1,1) ];
+		storyText.filters = [ new createjs.BlurFilter(2,2,1) ];
 		storyText.cache(-480, -20, 960, 40);
 		var storyContainer = new createjs.Container();
 		game.stage.addChild(storyContainer);
@@ -355,8 +365,8 @@ var startLevel = function(level){
 		var isFadeIn = true;
 		var FADE_ALPHA_MIN = -1;
 		var FADE_ALPHA_STEP = 0.04;
-		var FADE_ALPHA_MAX_STD = 1;
-		var FADE_ALPHA_MAX_PER_CHAR = 0.05;
+		var FADE_ALPHA_MAX_STD = 1.5;
+		var FADE_ALPHA_MAX_PER_CHAR = 0.04;
 		storyContainer.alpha = -1;
 		var fadeAlphaMax = 1;
 		userCtrl.skip = false;
@@ -369,10 +379,12 @@ var startLevel = function(level){
 			return c*FADE_ALPHA_MAX_PER_CHAR + FADE_ALPHA_MAX_STD;
 		};
 		var storyLoopFocused = true;
+		var isLongText = false;
 		var storyLoop = function(){
+			if(userCtrl.paused) unpause();
 			if(!game.focused) {
 				if(storyLoopFocused && game.settings.musicOn)
-					createjs.Sound.setVolume(game.settings.volume*0.003);
+					createjs.Sound.setVolume(MOBILE ? 0 : game.settings.volume*0.003); // TODO pause music
 				storyLoopFocused = false;
 				if(storyContainer.alpha >= 1) return;
 			} else if(!storyLoopFocused) {
@@ -393,6 +405,7 @@ var startLevel = function(level){
 			if(isFadeIn) {
 				// init text
 				if(storyContainer.alpha <= FADE_ALPHA_MIN) {
+					isLongText = false;
 					storyContainer.removeAllChildren();
 					if(story[i].charAt(0) === '!') {
 						if(story[i].slice(0,5) === '!img:') {
@@ -410,6 +423,7 @@ var startLevel = function(level){
 							storyText.cache(-480, -60, 960, 240);
 							fadeAlphaMax = storyTime(story[i])*0.3;
 							storyContainer.addChild(storyText);
+							isLongText = true;
 						} else if(story[i].slice(0,6) === '!long:') {
 							storyText.font = STORY_FONT_SIZE+'px'+game.lang.font;
 							storyText.lineHeight = STORY_FONT_SIZE*1.5;
@@ -441,9 +455,18 @@ var startLevel = function(level){
 					i++;
 				}
 			}
+			if(isLongText) game.stage.dirtyRect(0, 210, 960, 240);
+			else game.stage.dirtyRect(0, 240, 960, 60);
 			game.stage.update();
 		};
 		createjs.Ticker.addEventListener('tick', storyLoop);
+		// skip by touch
+		if(MOBILE) {
+			game.stage.removeTouchAreas();
+			game.stage.addTouchArea(0, 0, WIDTH, HEIGHT, function(){
+				userCtrl.skip = true;
+			});
+		}
 	};
 
 	// generate clouds
@@ -498,6 +521,8 @@ var startLevel = function(level){
 
 	// show map
 	var storyLoopEnd = function(){
+		if(MOBILE) game.stage.removeTouchAreas();
+
 		// save progress
 		if(game.settings.levelReached < level)
 			game.settings.levelReached = level;
@@ -523,10 +548,12 @@ var startLevel = function(level){
 		createjs.Ticker.addEventListener('tick', function(){
 			if(!game.focused && !userCtrl.paused) {
 				pause();
-				userCtrl.up = false;
-				userCtrl.down = false;
-				userCtrl.left = false;
-				userCtrl.right = false;
+				userCtrl.up = 0;
+				userCtrl.down = 0;
+				userCtrl.left = 0;
+				userCtrl.right = 0;
+				userCtrl.relX = 0;
+				userCtrl.relY = 0;
 			}
 		});
 
@@ -540,6 +567,7 @@ var startLevel = function(level){
 				if(fadingRect.alpha >= 1) {
 					createjs.Ticker.removeEventListener('tick', fadingAni);
 					game.stage.removeAllChildren();
+					game.stage.removeTouchAreas();
 					endFunc();
 					return;
 				}
@@ -558,9 +586,10 @@ var startLevel = function(level){
 				var fadeStep = controlConfig.bgFadeoutStep;
 				createjs.Ticker.addEventListener('tick', function(){
 					if(userCtrl.paused) return;
+					game.stage.dirtyRect(0, 0, WIDTH, HEIGHT);
 					map.picture.alpha -= fadeStep;
 					lightsLayer.alpha -= fadeStep;
-					cloudsLayer.alpha -= fadeStep;
+					if(!MOBILE) cloudsLayer.alpha -= fadeStep;
 					fadeFrame--;
 					if(!fadeFrame) levelEnd(function(){
 						startLevel(game.settings.curLevel);
@@ -595,28 +624,55 @@ var startLevel = function(level){
 		) );
 		var pauseLayerFrame = new createjs.Container();
 		pauseLayer.addChild(pauseLayerFrame);
-		pauseLayerFrame.x = WIDTH/2 - 250;
-		pauseLayerFrame.y = HEIGHT/2 - 150;
+		if(MOBILE) {
+			pauseLayerFrame.x = WIDTH/2 - 350;
+			pauseLayerFrame.y = HEIGHT/2 - 210;
+			pauseLayerFrame.scaleX = 1.4;
+			pauseLayerFrame.scaleY = 1.4;
+			var pauseLayerTouchArea = function(x, y, w, h, cb){
+				game.stage.addTouchArea(x * 1.4 + WIDTH/2 - 350, y * 1.4 + HEIGHT/2 - 210, w * 1.4, h * 1.4, cb);
+			};
+		} else {
+			pauseLayerFrame.x = WIDTH/2 - 250;
+			pauseLayerFrame.y = HEIGHT/2 - 150;
+		}
 		var pauseLayerBackground = (new createjs.Shape(
 			(new createjs.Graphics()).f('rgba(255,255,255,0.7)').r(0,0,500,300)
-		)).set({filters: [ new createjs.BoxBlurFilter(10,10,1) ]});
+		)).set({filters: [ new createjs.BlurFilter(10,10,4) ]});
 		pauseLayerBackground.cache(-10,-10,520,320);
 		pauseLayerFrame.addChild(pauseLayerBackground);
 		pauseLayerFrame.addChild(new createjs.Shape(
 			(new createjs.Graphics()).f('rgba(64,64,64,0.7)').r(30,80,440,3)
 		));
-		pauseLayerFrame.addChild( (new createjs.Text(game.str[23], '20px'+game.lang.font, 'black')).set({
-			textAlign: 'center',
-			textBaseline: 'top',
-			x: 250,
-			y: 40
-		}) );
-		pauseLayerFrame.addChild( (new createjs.Text(game.str[24], '16px'+game.lang.font, 'rgb(64,64,64)')).set({
-			textAlign: 'center',
-			textBaseline: 'bottom',
-			x: 250,
-			y: 270
-		}) );
+		if(MOBILE) {
+			var pauseLayerContinue = (new createjs.Text('CONTINUE', '20px'+game.lang.font, 'black')).set({
+				textAlign: 'left',
+				textBaseline: 'top',
+				x: 50,
+				y: 50
+			});
+			pauseLayerFrame.addChild( pauseLayerContinue );
+			var pauseLayerCover = (new createjs.Text('COVER', '20px'+game.lang.font, 'rgb(64,64,64)')).set({
+				textAlign: 'right',
+				textBaseline: 'top',
+				x: 450,
+				y: 50
+			});
+			pauseLayerFrame.addChild( pauseLayerCover );
+		} else {
+			pauseLayerFrame.addChild( (new createjs.Text(game.str[23], '20px'+game.lang.font, 'black')).set({
+				textAlign: 'center',
+				textBaseline: 'top',
+				x: 250,
+				y: 40
+			}) );
+			pauseLayerFrame.addChild( (new createjs.Text(game.str[24], '16px'+game.lang.font, 'rgb(64,64,64)')).set({
+				textAlign: 'center',
+				textBaseline: 'bottom',
+				x: 250,
+				y: 270
+			}) );
+		}
 		var levelLinkFrame = new createjs.Container();
 		pauseLayerFrame.addChild(levelLinkFrame);
 		var levelLinkSelected = 0;
@@ -656,6 +712,7 @@ var startLevel = function(level){
 			// show or hide frame
 			if(userCtrl.paused && !pauseLayerShown) {
 				game.stage.addChild(pauseLayer);
+				if(MOBILE) game.stage.alterTouchAreas();
 				pauseLayerShown = true;
 				if(game.settings.musicOn)
 					createjs.Sound.setVolume(game.settings.volume*0.003);
@@ -664,6 +721,7 @@ var startLevel = function(level){
 				game.stage.update();
 			} else if(!userCtrl.paused && pauseLayerShown) {
 				game.stage.removeChild(pauseLayer);
+				if(MOBILE) game.stage.alterTouchAreas();
 				pauseLayerShown = false;
 				if(game.settings.musicOn)
 					createjs.Sound.setVolume(game.settings.volume/100);
@@ -715,6 +773,41 @@ var startLevel = function(level){
 				}, 0);
 			}
 		});
+		if(MOBILE) {
+			// pause layer touch areas
+			game.stage.alterTouchAreas();
+			// continue
+			var rect = pauseLayerContinue.getBounds();
+			pauseLayerTouchArea(pauseLayerContinue.x, pauseLayerContinue.y, rect.width, rect.height, function(){
+				if(!userCtrl.paused) return;
+				unpause();
+			});
+			// cover
+			rect = pauseLayerCover.getBounds();
+			pauseLayerTouchArea(pauseLayerCover.x-rect.width, pauseLayerCover.y, rect.width, rect.height, function(){
+				if(!userCtrl.paused) return;
+				userCtrl.reset = true;
+				pauseLayerCover.color = '#000';
+			});
+			// level links
+			for(var i=0; i<=game.settings.levelReached; i++) {
+				var r = Math.floor(i/7) + 1;
+				var c = i%7 + 1;
+				if(i === 21) {
+					r = 3;
+					c = 8;
+				}
+				(function(c,r,i){
+					pauseLayerTouchArea(c*50+25-20, r*50+70-20, 40, 40, function(){
+						if(!userCtrl.paused) return;
+						levelLinkSelected = i;
+						levelLinksUpdate();
+						userCtrl.skip = true;
+					});
+				})(c,r,i);
+			}
+			game.stage.alterTouchAreas();
+		}
 
 		// reset
 		createjs.Ticker.addEventListener('tick', function(){
@@ -760,7 +853,7 @@ var startLevel = function(level){
 				else var totalFrame2 = 0;
 				var curFrame = 0;
 				var tickFn = function() {
-					if (userCtrl.paused) return ;
+					if (userCtrl.paused) return;
 					if (curFrame < totalFrame || curFrame < totalFrame2) {
 						if(curFrame < totalFrame) {
 							mePicture.x = ox1 + curFrame * xspeed1;
@@ -790,12 +883,12 @@ var startLevel = function(level){
 				text.font = MAP_TEXT_FONT_SIZE+'px'+game.lang.font;
 				text.lineHeight = 36;
 				text.color = textInfo[4] || (controlConfig.player === 2 ? HER_COLOR_LIGHT : '#fff');
-				text.text = textInfo[0];
+				text.text = (MOBILE && textInfo[5]) || textInfo[0];
 				text.textAlign = textInfo[3] || 'center';
 				text.textBaseline = 'middle';
 				text.x = textInfo[1] || 480;
 				text.y = textInfo[2] || 270;
-				text.filters = [ new createjs.BoxBlurFilter(1,1,1) ];
+				text.filters = [ new createjs.BlurFilter(2,2,1) ];
 				if(text.textAlign === 'left')
 					text.cache(0, -20, 960, 40);
 				else if(text.textAlign === 'center')
@@ -854,7 +947,6 @@ var startLevel = function(level){
 							meHp -= ME_R*2*ME_DAMAGE_PER_R*lightHurt * 0.5;
 						else
 							meHp -= (a.r-d2)*ME_DAMAGE_PER_R*lightHurt * 0.5;
-						console.info(meHp);
 					}
 				}
 			}
@@ -884,10 +976,15 @@ var startLevel = function(level){
 			// move
 			var x = 0;
 			var y = 0;
-			if(userCtrl.up) y--;
-			if(userCtrl.down) y++;
-			if(userCtrl.left) x--;
-			if(userCtrl.right) x++;
+			if(userCtrl.relX || userCtrl.relY) {
+				x = userCtrl.relX;
+				y = userCtrl.relY;
+			} else {
+				if(userCtrl.up) y--;
+				if(userCtrl.down) y++;
+				if(userCtrl.left) x--;
+				if(userCtrl.right) x++;
+			}
 			if (controlConfig.onlyRight) {
 				if(x < 0) x = 0;
 				y = 0;
@@ -906,16 +1003,12 @@ var startLevel = function(level){
 					mePicture.gotoAndPlay('fast');
 				}
 				if(x !== 0 || y !== 0) {
-					var p = 0;
-					if(y === 0 && x === 1) p = 0;
-					else if(y === 0 && x === -1) p = Math.PI;
-					else if(x === 0) p = Math.PI/2;
-					else if(x === -1) p = Math.PI*3/4;
-					else if(x === 1) p = Math.PI/4;
-					if(y === -1) p = -p;
+					var xyr = Math.sqrt(x*x + y*y);
+					var p = Math.acos(x/xyr);
+					if(y < 0) p = 2*Math.PI - p;
 					p += Math.random()*ME_ACTION_DIF*2 - ME_ACTION_DIF;
-					x = ME_ACTION_SPEED * Math.cos(p);
-					y = ME_ACTION_SPEED * Math.sin(p);
+					x = ME_MOVE_SPEED * Math.cos(p);
+					y = ME_MOVE_SPEED * Math.sin(p);
 					running = true;
 				}
 			} else {
@@ -924,12 +1017,17 @@ var startLevel = function(level){
 					actionAni = false;
 					mePicture.gotoAndPlay('normal');
 				}
+				if(x || y) {
+					var xyr = Math.sqrt(x*x + y*y);
+					if(xyr < ME_MOVE_SPEED && (userCtrl.relX || userCtrl.relY)) {
+						x = 0;
+						y = 0;
+					}
+					x /= xyr;
+					y /= xyr;
+				}
 				x *= ME_MOVE_SPEED;
 				y *= ME_MOVE_SPEED;
-				if(x !== 0 && y !== 0) {
-					x /= 1.4142136;
-					y /= 1.4142136;
-				}
 			}
 			if (controlConfig.slow) {
 				x *= ME_SLOW_RATE;
@@ -937,30 +1035,51 @@ var startLevel = function(level){
 			}
 			// check walls
 			if(x || y) {
-				var px = mePicture.x + x;
-				var py = mePicture.y + y;
-				var checkWall = function(x, y){
-					if(x < ME_R || y < ME_R || x >= WIDTH-ME_R || y >= HEIGHT-ME_R) return true;
-					if( map.wall[ Math.floor((x-12)/6) + Math.floor((y-12)/6)*160 ] > 1 ) return true;
-					if( map.wall[ Math.floor((x+12)/6) + Math.floor((y-12)/6)*160 ] > 1 ) return true;
-					if( map.wall[ Math.floor((x+12)/6) + Math.floor((y+12)/6)*160 ] > 1 ) return true;
-					if( map.wall[ Math.floor((x-12)/6) + Math.floor((y+12)/6)*160 ] > 1 ) return true;
-					if( map.wall[ Math.floor(x/6) + Math.floor(y/6)*160 ] ) return true;
-					return false;
-				};
-				if(checkWall(px, py)) {
-					if(!checkWall(mePicture.x + x, mePicture.y)) {
-						if(y > 0) py = (Math.floor(py/6))*6 - 1e-3;
-						else if(y < 0) py = (Math.floor(py/6)+1)*6;
-					} else if(!checkWall(mePicture.x, mePicture.y + y)) {
-						if(x > 0) px = (Math.floor(px/6))*6 - 1e-3;
-						else if(x < 0) px = (Math.floor(px/6)+1)*6;
-					} else {
-						if(x > 0) px = (Math.floor(px/6))*6 - 1e-3;
-						else if(x < 0) px = (Math.floor(px/6)+1)*6;
-						if(y > 0) py = (Math.floor(py/6))*6 - 1e-3;
-						else if(y < 0) py = (Math.floor(py/6)+1)*6;
+				var bx = mePicture.x;
+				var by = mePicture.y;
+				for(var mul = (running?2:1); mul; mul--) {
+					var px = bx + x;
+					var py = by + y;
+					var checkWall = function(x, y){
+						// map borders
+						if(x < ME_R || y < ME_R || x >= WIDTH-ME_R || y >= HEIGHT-ME_R) return true;
+						// center cannot run into blurred wall
+						var cx = Math.floor(x/6);
+						var cy = Math.floor(y/6);
+						if( map.wall[ cx + cy*160 ] ) return true;
+						// border cannot run into wall
+						for(var px=cx-1; px<=cx+2; px++) {
+							for(var py=cy-1; py<=cy+2; py++) {
+								var dx = px*6 - x;
+								var dy = py*6 - y;
+								if(dx*dx + dy*dy > 143) continue;
+								if( map.wall[ (px-1) + (py-1)*160 ] > 1 ) return true;
+								if( map.wall[ (px-1) + py*160 ] > 1 ) return true;
+								if( map.wall[ px + (py-1)*160 ] > 1 ) return true;
+								if( map.wall[ px + py*160 ] > 1 ) return true;
+							}
+						}
+						return false;
+					};
+					if(checkWall(px, py)) {
+						var candidatePoints = [];
+						if(y <= 0) candidatePoints.push([px, (Math.floor(py/6))*6 + 6]);
+						if(y >= 0) candidatePoints.push([px, (Math.floor(py/6))*6 - 1e-3]);
+						if(x <= 0) candidatePoints.push([(Math.floor(px/6))*6 + 6, py]);
+						if(x >= 0) candidatePoints.push([(Math.floor(px/6))*6 - 1e-3, py]);
+						for(var i=0; i<candidatePoints.length; i++) {
+							px = candidatePoints[i][0];
+							py = candidatePoints[i][1];
+							if(!checkWall(px, py)) break;
+						}
+						if(i === candidatePoints.length) {
+							px = bx;
+							py = by;
+							break;
+						}
 					}
+					bx = px;
+					by = py;
 				}
 				if (px - mePicture.x || py - mePicture.y) {
 					mePicture.x = px;
@@ -1040,14 +1159,14 @@ var startLevel = function(level){
 		if (controlConfig.fog) {
 			var fog = new createjs.Shape();
 			fog.graphics.f('white').dc(0, 0, FOG_R-8);
-			fog.filters = [ new createjs.BoxBlurFilter(8,8,1) ];
+			fog.filters = [ new createjs.BlurFilter(8,8,1) ];
 			fog.cache(-FOG_R, -FOG_R, 2*FOG_R, 2*FOG_R);
 			fog.compositeOperation = 'destination-in';
 			fog.x = mePicture.x;
 			fog.y = mePicture.y;
 			var fogBackground = new createjs.Shape();
 			fogBackground.graphics.f('rgb(128,128,128)').r(8, 8, WIDTH-16, HEIGHT-16);
-			fogBackground.filters = [ new createjs.BoxBlurFilter(8,8,1) ];
+			fogBackground.filters = [ new createjs.BlurFilter(8,8,1) ];
 			fogBackground.cache(0, 0, WIDTH, HEIGHT);
 			fogBackground.compositeOperation = 'destination-over';
 			game.stage.addChild(fog);
@@ -1057,7 +1176,7 @@ var startLevel = function(level){
 		// add flash layer
 		var lightsLayer = new createjs.Container().set({x:0,y:0});
 		game.stage.addChild(lightsLayer);
-		if (controlConfig.flash) {
+		if(!MOBILE && controlConfig.flash) {
 			var flash = new createjs.Shape().set({alpha: FLASH_ALPHA_MAX});;
 			flash.graphics.f('black').dr(0, 0, WIDTH, HEIGHT);
 			game.stage.addChild(flash);
@@ -1076,8 +1195,16 @@ var startLevel = function(level){
 
 		// update lights
 		var lightsSpeed = LIGHTS_SPEED[game.settings.difficulty];
+		var lightsPos = [];
 		createjs.Ticker.addEventListener('tick', function(){
 			if(userCtrl.paused) return;
+			// mark dirty
+			for(var i=0; i<lightsPos.length; i++) {
+				var r = lightsPos[i][0] + 6;
+				var x = lightsPos[i][1];
+				var y = lightsPos[i][2];
+			}
+			lightsPos = [];
 			// redraw lights
 			lightsLayer.removeAllChildren();
 			for(var i=0; i<lights.length; i++) {
@@ -1128,6 +1255,7 @@ var startLevel = function(level){
 				}
 				// draw
 				lightsLayer.addChild(generateLight(Math.round(a.r), a.x, a.y));
+				lightsPos.push([Math.round(a.r), a.x, a.y]);
 			}
 		});
 
@@ -1136,13 +1264,13 @@ var startLevel = function(level){
 		game.stage.addChild(mapTextLayer);
 
 		// show clouds
-		var cloudsLayer = cloudsStart();
+		if(!MOBILE) var cloudsLayer = cloudsStart();
 
 		// show hp from level 1
 		if(level > 0) {
 			var hpBackground = new createjs.Shape();
 			hpBackground.graphics.f('black').r(0,0,8,100);
-			hpBackground.filters = [ new createjs.BoxBlurFilter(3,3,1) ];
+			hpBackground.filters = [ new createjs.BlurFilter(3,3,1) ];
 			hpBackground.cache(-7,-7,22,114);
 			var hpOutline = new createjs.Shape();
 			hpOutline.graphics.ss(1).s('#fff').f('black').r(0,0,8,100);
@@ -1151,6 +1279,10 @@ var startLevel = function(level){
 			var h = 100*meHp/meHpMax;
 			hpShape.graphics.f('#fff').r(0,100-h,8,h);
 			var hpPicture = new createjs.Container().set({x:50, y:50, alpha:0.3});
+			if(MOBILE) {
+				hpPicture.scaleX = hpPicture.scaleY = 1.5;
+				hpPicture.x = hpPicture.y = 35;
+			}
 			if(map.white) whiteMap.alpha = 1.3 - hpPicture.alpha;
 			hpPicture.addChild(hpBackground);
 			hpPicture.addChild(hpOutline);
@@ -1185,6 +1317,107 @@ var startLevel = function(level){
 			});
 		}
 
+		// show circles for touch control
+		if(MOBILE) {
+			// show direction control
+			var touchCtrlBackground = new createjs.Shape();
+			touchCtrlBackground.graphics.setStrokeStyle(12).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.25)');
+			if(controlConfig.ctrlColorDark) touchCtrlBackground.graphics.s('rgba(64,64,64,1)').f('rgba(64,64,64,0.25)');
+			touchCtrlBackground.graphics.dc(0, 0, TOUCH_CTRL_R-6);
+			touchCtrlBackground.filters = [ new createjs.BlurFilter(2,2,1) ];
+			touchCtrlBackground.cache(-TOUCH_CTRL_R-10, -TOUCH_CTRL_R-10, TOUCH_CTRL_R*2+20, TOUCH_CTRL_R*2+20);
+			var touchCtrlCur = new createjs.Shape();
+			touchCtrlCur.graphics.f( controlConfig.ctrlColorDark ? 'rgba(64,64,64,0.75)' : 'rgba(255,255,255,0.75)').dc(0, 0, 30);
+			touchCtrlCur.filters = [ new createjs.BlurFilter(6,6,2) ];
+			touchCtrlCur.cache(-38, -38, 76, 76);
+			var touchCtrl = new createjs.Container();
+			touchCtrl.x = TOUCH_CTRL_X;
+			touchCtrl.y = TOUCH_CTRL_Y;
+			touchCtrl.alpha = 0.4;
+			touchCtrl.addChild(touchCtrlCur);
+			touchCtrl.addChild(touchCtrlBackground);
+			game.stage.addChild(touchCtrl);
+			createjs.Ticker.addEventListener('tick', function(){
+				game.stage.dirtyRect(TOUCH_CTRL_X-TOUCH_CTRL_R-10, TOUCH_CTRL_Y-TOUCH_CTRL_R-10, TOUCH_CTRL_R*2+20, TOUCH_CTRL_R*2+20);
+				var x = userCtrl.relX;
+				var y = userCtrl.relY;
+				if(!x && !y) {
+					touchCtrlCur.x = 0;
+					touchCtrlCur.y = 0;
+				}
+				touchCtrlCur.x = x;
+				touchCtrlCur.y = y;
+			});
+			// direction events
+			game.stage.addTouchArea(TOUCH_CTRL_X-TOUCH_CTRL_R, TOUCH_CTRL_Y-TOUCH_CTRL_R, TOUCH_CTRL_R*2, TOUCH_CTRL_R*2, function(type, stageX, stageY){
+				if(type === 'end') {
+					userCtrl.relX = x;
+					userCtrl.relY = y;
+					return;
+				}
+				var x = stageX - TOUCH_CTRL_X;
+				var y = stageY - TOUCH_CTRL_Y;
+				var r = Math.sqrt(x*x+y*y);
+				if(r > TOUCH_CTRL_R || r < TOUCH_CTRL_R*0.25) {
+					userCtrl.relX = 0;
+					userCtrl.relY = 0;
+				} else {
+					userCtrl.relX = x;
+					userCtrl.relY = y;
+				}
+			});
+			// show pause control
+			var pauseCtrlCur = new createjs.Shape();
+			pauseCtrlCur.graphics.setStrokeStyle(6).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.25)');
+			if(controlConfig.ctrlColorDark) pauseCtrlCur.graphics.s('rgba(64,64,64,1)').f('rgba(64,64,64,0.25)');
+			pauseCtrlCur.graphics.dc(0, 0, PAUSE_CTRL_R-3);
+			pauseCtrlCur.graphics.setStrokeStyle(0).f('rgba(255,255,255,1)');
+			if(controlConfig.ctrlColorDark) pauseCtrlCur.graphics.f('rgba(64,64,64,1)');
+			pauseCtrlCur.graphics.r(-6, -6, 12, 12);
+			pauseCtrlCur.filters = [ new createjs.BlurFilter(2,2,1) ];
+			pauseCtrlCur.cache(-PAUSE_CTRL_R-4, -PAUSE_CTRL_R-4, PAUSE_CTRL_R*2+8, PAUSE_CTRL_R*2+8);
+			var pauseCtrl = new createjs.Container();
+			pauseCtrl.x = PAUSE_CTRL_X;
+			pauseCtrl.y = PAUSE_CTRL_Y;
+			pauseCtrl.alpha = 0.4;
+			pauseCtrl.addChild(pauseCtrlCur);
+			game.stage.addChild(pauseCtrl);
+			// pause events
+			game.stage.addTouchArea(PAUSE_CTRL_X-PAUSE_CTRL_R, PAUSE_CTRL_Y-PAUSE_CTRL_R, PAUSE_CTRL_R*2, PAUSE_CTRL_R*2, function(type, stageX, stageY){
+				if(type === 'end') {
+					pause();
+					return;
+				}
+			});
+		}
+		if(MOBILE && level > 1 && !controlConfig.noRun && !controlConfig.mustRun) {
+			// show action control
+			var actionCtrlCur = new createjs.Shape();
+			actionCtrlCur.graphics.setStrokeStyle(6).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.25)').dc(0, 0, ACTION_CTRL_R-3);
+			actionCtrlCur.filters = [ new createjs.BlurFilter(2,2,1) ];
+			actionCtrlCur.cache(-ACTION_CTRL_R-4, -ACTION_CTRL_R-4, ACTION_CTRL_R*2+8, ACTION_CTRL_R*2+8);
+			var actionCtrl = new createjs.Container();
+			actionCtrl.x = ACTION_CTRL_X;
+			actionCtrl.y = ACTION_CTRL_Y;
+			actionCtrl.alpha = 0.4;
+			actionCtrl.addChild(actionCtrlCur);
+			game.stage.addChild(actionCtrl);
+			// action events
+			game.stage.addTouchArea(ACTION_CTRL_X-ACTION_CTRL_R, ACTION_CTRL_Y-ACTION_CTRL_R, ACTION_CTRL_R*2, ACTION_CTRL_R*2, function(type, stageX, stageY){
+				if(type === 'end') {
+					userCtrl.action = false;
+					return;
+				}
+				userCtrl.action = true;
+			});
+			createjs.Ticker.addEventListener('tick', function(){
+				if(userCtrl.action) actionCtrl.alpha = 0.6;
+				else actionCtrl.alpha = 0.4;
+				if(userCtrl.relX || userCtrl.relY) touchCtrl.alpha = 0.6;
+				else touchCtrl.alpha = 0.4;
+			});
+		}
+
 		// fade in
 		var fadingRect = new createjs.Shape().set({alpha: 1});
 		fadingRect.graphics.f('black').r(0,0,WIDTH,HEIGHT);
@@ -1206,11 +1439,7 @@ var startLevel = function(level){
 			game.stage.update();
 		});
 
-		// show hint
-		if(game.words[level].hint)
-			hint.show(game.words[level].hint, 5000);
-
-		// TODO : DEBUG
+		// DEBUG
 		if(DEBUG.SHOW_FPS) {
 			var t = new createjs.Text('FPS: ...', '12px monospace', 'red');
 			t.x = 0;
@@ -1231,6 +1460,13 @@ game.started = false;
 game.start = function(){
 	if(game.started) return;
 	game.started = true;
+
+	// set location hash
+	if(location.href !== '#game') location.href = '#game';
+	window.onhashchange = function(e){
+		e.preventDefault();
+		if(location.hash !== '#game') pause();
+	};
 
 	// update volume
 	var updateVolume = function(){
@@ -1272,31 +1508,31 @@ game.start = function(){
 		userCtrl.action = true;
 	};
 	var keyStartUp = function(){
-		userCtrl.up = true;
+		userCtrl.up = 1;
 	};
 	var keyStartDown = function(){
-		userCtrl.down = true;
+		userCtrl.down = 1;
 	};
 	var keyStartLeft = function(){
-		userCtrl.left = true;
+		userCtrl.left = 1;
 	};
 	var keyStartRight = function(){
-		userCtrl.right = true;
+		userCtrl.right = 1;
 	};
 	var keyEndAction = function(){
 		userCtrl.action = false;
 	};
 	var keyEndUp = function(){
-		userCtrl.up = false;
+		userCtrl.up = 0;
 	};
 	var keyEndDown = function(){
-		userCtrl.down = false;
+		userCtrl.down = 0;
 	};
 	var keyEndLeft = function(){
-		userCtrl.left = false;
+		userCtrl.left = 0;
 	};
 	var keyEndRight = function(){
-		userCtrl.right = false;
+		userCtrl.right = 0;
 	};
 
 	var keyDownFunc = {
