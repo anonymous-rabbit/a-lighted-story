@@ -1321,19 +1321,19 @@ var startLevel = function(level){
 		if(MOBILE) {
 			// show direction control
 			var touchCtrlBackground = new createjs.Shape();
-			touchCtrlBackground.graphics.setStrokeStyle(12).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.5)');
-			if(controlConfig.ctrlColorDark) touchCtrlBackground.graphics.s('rgba(64,64,64,1)').f('rgba(64,64,64,0.5)');
+			touchCtrlBackground.graphics.setStrokeStyle(12).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.25)');
+			if(controlConfig.ctrlColorDark) touchCtrlBackground.graphics.s('rgba(64,64,64,1)').f('rgba(64,64,64,0.25)');
 			touchCtrlBackground.graphics.dc(0, 0, TOUCH_CTRL_R-6);
 			touchCtrlBackground.filters = [ new createjs.BlurFilter(2,2,1) ];
 			touchCtrlBackground.cache(-TOUCH_CTRL_R-10, -TOUCH_CTRL_R-10, TOUCH_CTRL_R*2+20, TOUCH_CTRL_R*2+20);
 			var touchCtrlCur = new createjs.Shape();
-			touchCtrlCur.graphics.f( controlConfig.ctrlColorDark ? 'rgba(64,64,64,1)' : 'rgba(255,255,255,1)').dc(0, 0, 30);
+			touchCtrlCur.graphics.f( controlConfig.ctrlColorDark ? 'rgba(64,64,64,0.75)' : 'rgba(255,255,255,0.75)').dc(0, 0, 30);
 			touchCtrlCur.filters = [ new createjs.BlurFilter(6,6,2) ];
 			touchCtrlCur.cache(-38, -38, 76, 76);
 			var touchCtrl = new createjs.Container();
 			touchCtrl.x = TOUCH_CTRL_X;
 			touchCtrl.y = TOUCH_CTRL_Y;
-			touchCtrl.alpha = 0.2;
+			touchCtrl.alpha = 0.4;
 			touchCtrl.addChild(touchCtrlCur);
 			touchCtrl.addChild(touchCtrlBackground);
 			game.stage.addChild(touchCtrl);
@@ -1368,8 +1368,8 @@ var startLevel = function(level){
 			});
 			// show pause control
 			var pauseCtrlCur = new createjs.Shape();
-			pauseCtrlCur.graphics.setStrokeStyle(6).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.5)');
-			if(controlConfig.ctrlColorDark) pauseCtrlCur.graphics.s('rgba(64,64,64,1)').f('rgba(64,64,64,0.5)');
+			pauseCtrlCur.graphics.setStrokeStyle(6).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.25)');
+			if(controlConfig.ctrlColorDark) pauseCtrlCur.graphics.s('rgba(64,64,64,1)').f('rgba(64,64,64,0.25)');
 			pauseCtrlCur.graphics.dc(0, 0, PAUSE_CTRL_R-3);
 			pauseCtrlCur.graphics.setStrokeStyle(0).f('rgba(255,255,255,1)');
 			if(controlConfig.ctrlColorDark) pauseCtrlCur.graphics.f('rgba(64,64,64,1)');
@@ -1379,7 +1379,7 @@ var startLevel = function(level){
 			var pauseCtrl = new createjs.Container();
 			pauseCtrl.x = PAUSE_CTRL_X;
 			pauseCtrl.y = PAUSE_CTRL_Y;
-			pauseCtrl.alpha = 0.2;
+			pauseCtrl.alpha = 0.4;
 			pauseCtrl.addChild(pauseCtrlCur);
 			game.stage.addChild(pauseCtrl);
 			// pause events
@@ -1393,13 +1393,13 @@ var startLevel = function(level){
 		if(MOBILE && level > 1 && !controlConfig.noRun && !controlConfig.mustRun) {
 			// show action control
 			var actionCtrlCur = new createjs.Shape();
-			actionCtrlCur.graphics.setStrokeStyle(6).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.5)').dc(0, 0, ACTION_CTRL_R-3);
+			actionCtrlCur.graphics.setStrokeStyle(6).s('rgba(255,255,255,1)').f('rgba(255,255,255,0.25)').dc(0, 0, ACTION_CTRL_R-3);
 			actionCtrlCur.filters = [ new createjs.BlurFilter(2,2,1) ];
 			actionCtrlCur.cache(-ACTION_CTRL_R-4, -ACTION_CTRL_R-4, ACTION_CTRL_R*2+8, ACTION_CTRL_R*2+8);
 			var actionCtrl = new createjs.Container();
 			actionCtrl.x = ACTION_CTRL_X;
 			actionCtrl.y = ACTION_CTRL_Y;
-			actionCtrl.alpha = 0.2;
+			actionCtrl.alpha = 0.4;
 			actionCtrl.addChild(actionCtrlCur);
 			game.stage.addChild(actionCtrl);
 			// action events
@@ -1411,10 +1411,10 @@ var startLevel = function(level){
 				userCtrl.action = true;
 			});
 			createjs.Ticker.addEventListener('tick', function(){
-				if(userCtrl.action) actionCtrl.alpha = 0.3;
-				else actionCtrl.alpha = 0.2;
-				if(userCtrl.relX || userCtrl.relY) touchCtrl.alpha = 0.3;
-				else touchCtrl.alpha = 0.2;
+				if(userCtrl.action) actionCtrl.alpha = 0.6;
+				else actionCtrl.alpha = 0.4;
+				if(userCtrl.relX || userCtrl.relY) touchCtrl.alpha = 0.6;
+				else touchCtrl.alpha = 0.4;
 			});
 		}
 
