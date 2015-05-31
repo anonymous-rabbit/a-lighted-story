@@ -21,7 +21,7 @@
 		'DOM/Audio':
 			function() {
 				try {
-					if(typeof(document.createElement('audio').src) !== 'undefined')
+					if(createjs.Sound.initializeDefaultPlugins())
 						return true;
 				} catch(e) {}
 			},
@@ -165,6 +165,7 @@ document.bindReady(function(){
 			aniObj = setInterval(aniFrame, ANIMATION_INTERVAL);
 		};
 		var show = function(text, timeout){
+			if(MOBILE) return;
 			div.innerHTML = textToHtml(text);
 			if(!isShown) {
 				isShown = true;
@@ -181,10 +182,12 @@ document.bindReady(function(){
 			timeoutObj = setTimeout(hide, timeout);
 		};
 		var showLink = function(text, href){
+			if(MOBILE) return;
 			show(text);
 			div.innerHTML = '<a href="'+href+'" target="_blank">'+div.innerHTML+'</a>';
 		};
 		var hide = function(){
+			if(MOBILE) return;
 			if(isShown) {
 				isShown = false;
 				aniStart();
@@ -194,6 +197,9 @@ document.bindReady(function(){
 				timeoutObj = false;
 			}
 		};
+		if(MOBILE) {
+			div.parentNode.removeChild(div);
+		}
 		return {
 			show: show,
 			showLink: showLink,
@@ -223,6 +229,24 @@ document.bindReady(function(){
 			} else if (document.webkitCancelFullScreen) {
 				document.webkitCancelFullScreen();
 			}
+		}
+	};
+	window.fullScreenOn = function(){
+		if (document.documentElement.requestFullscreen) {
+			document.documentElement.requestFullscreen();
+		} else if (document.documentElement.mozRequestFullScreen) {
+			document.documentElement.mozRequestFullScreen();
+		} else if (document.documentElement.webkitRequestFullscreen) {
+			document.documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+		}
+	};
+	window.fullScreenOff = function(){
+		if (document.cancelFullScreen) {
+			document.cancelFullScreen();
+		} else if (document.mozCancelFullScreen) {
+			document.mozCancelFullScreen();
+		} else if (document.webkitCancelFullScreen) {
+			document.webkitCancelFullScreen();
 		}
 	};
 });

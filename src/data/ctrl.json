@@ -150,6 +150,7 @@
 			"end2": [492, 318],
 			"speed": 1.5,
 			"doneLevel": false
-		}]
+		}],
+		"ctrlColorDark": true
 	}
 ]

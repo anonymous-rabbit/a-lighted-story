@@ -2,7 +2,7 @@
 	{
 		"story": "Down the path I moved alone.",
 		"ends": [
-			[ "[ I knew, I could move around using the arrow keys. ]", null, 60, "center", "#808080" ]
+			[ "[ I knew, I could move around using the arrow keys. ]", null, 60, "center", "#808080", "[ I knew, I could move around using the control panel. ]" ]
 		]
 	}, {
 		"story": "I feared those \"lights\", who seem to burn me up.",
@@ -12,7 +12,7 @@
 	}, {
 		"story": "Rushing, stumbling, I tried to keep away.",
 		"ends": [
-			[ "[ Hold \"space\" to run with slowly consuming my health. ]", null, 60, "center", "#808080" ]
+			[ "[ Hold \"space\" to run with slowly consuming my health. ]", null, 60, "center", "#808080", "[ Hold the left-bottom circle to run with slowly consuming my health. ]" ]
 		]
 	}, {
 		"story": "My life was dull, all the same in those shadowed corners.",
